@@ -39,10 +39,10 @@ deactivate nondestructive
 if [ "${OSTYPE:-}" = "cygwin" ] || [ "${OSTYPE:-}" = "msys" ] ; then
     # transform D:\path\to\venv to /d/path/to/venv on MSYS
     # and to /cygdrive/d/path/to/venv on Cygwin
-    export VIRTUAL_ENV=$(cygpath "C:\Users\106-5180\OneDrive - JGC Group\デスクトップ\DPD(1)_BIM unit作業フォルダ\240807_ACC API token\.venv")
+    export VIRTUAL_ENV=$(cygpath "C:\Users\106-5180\OneDrive - JGC Group\デスクトップ\ACC attribute configurator\.venv")
 else
     # use the path as-is
-    export VIRTUAL_ENV="C:\Users\106-5180\OneDrive - JGC Group\デスクトップ\DPD(1)_BIM unit作業フォルダ\240807_ACC API token\.venv"
+    export VIRTUAL_ENV="C:\Users\106-5180\OneDrive - JGC Group\デスクトップ\ACC attribute configurator\.venv"
 fi
 
 _OLD_VIRTUAL_PATH="$PATH"
