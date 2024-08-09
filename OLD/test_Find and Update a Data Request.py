@@ -58,3 +58,84 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
+# ========================================================================================================
+
+def get_projects(access_token, hub_id):
+    url = f"https://developer.api.autodesk.com/project/v1/hubs/{hub_id}/projects"
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()['data']
+    else:
+        raise Exception(f"プロジェクト取得エラー: {response.text}")
+
+def get_top_folders(access_token, hub_id, project_id):
+    url = f"https://developer.api.autodesk.com/project/v1/hubs/{hub_id}/projects/{project_id}/topFolders"
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()['data']
+    else:
+        raise Exception(f"トップフォルダ取得エラー: {response.text}")
+
+def get_folder_contents(access_token, project_id, folder_id):
+    url = f"https://developer.api.autodesk.com/data/v1/projects/{project_id}/folders/{folder_id}/contents"
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()['data']
+    else:
+        raise Exception(f"フォルダ内容取得エラー: {response.text}")
+
+def find_folder_by_name(access_token, project_id, parent_folder_id, target_folder_name):
+    contents = get_folder_contents(access_token, project_id, parent_folder_id)
+    for item in contents:
+        if item['type'] == 'folders' and item['attributes']['name'] == target_folder_name:
+            return item['id']
+    return None
+
+if __name__ == '__main__':
+    try:
+        auth_code = get_auth_code()
+        if auth_code:
+            token = get_access_token(auth_code)
+            print(f'取得したアクセストークン: {token}')
+
+            # ここから新しいコード
+            hub_id = input("Hub IDを入力してください: ")
+            projects = get_projects(token, hub_id)
+            
+            print("利用可能なプロジェクト:")
+            for project in projects:
+                print(f"- {project['attributes']['name']} (ID: {project['id']})")
+            
+            project_id = input("プロジェクトIDを入力してください: ")
+            
+            top_folders = get_top_folders(token, hub_id, project_id)
+            print("\nトップレベルフォルダ:")
+            for folder in top_folders:
+                print(f"- {folder['attributes']['name']} (ID: {folder['id']})")
+            
+            target_folder_name = input("\n探したいフォルダ名を入力してください: ")
+            
+            for top_folder in top_folders:
+                folder_id = find_folder_by_name(token, project_id, top_folder['id'], target_folder_name)
+                if folder_id:
+                    print(f"\n'{target_folder_name}'のフォルダID: {folder_id}")
+                    break
+            else:
+                print(f"\n'{target_folder_name}'というフォルダは見つかりませんでした。")
+
+        else:
+            print("認証コードの取得に失敗しました。")
+    except Exception as e:
+        print(f"エラーが発生しました: {str(e)}")
