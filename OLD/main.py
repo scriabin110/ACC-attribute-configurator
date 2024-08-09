@@ -6,7 +6,6 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.parse
 import threading
 import config
-import json
 
 # Autodeskアプリケーションの認証情報
 CLIENT_ID = config.CLIENT_ID
@@ -23,6 +22,7 @@ class CallbackHandler(BaseHTTPRequestHandler):
         query = urllib.parse.urlparse(self.path).query
         params = urllib.parse.parse_qs(query)
         auth_code = params.get('code', [None])[0]
+        
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
@@ -35,11 +35,14 @@ def start_server():
 
 def get_auth_code():
     auth_url = f"https://developer.api.autodesk.com/authentication/v2/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri={urllib.parse.quote_plus(CALLBACK_URL)}&scope={' '.join(SCOPES)}"
+    
     print(f"ブラウザで認証ページを開きます。認証後、自動的にコードが取得されます。")
     webbrowser.open(auth_url)
+    
     server_thread = threading.Thread(target=start_server)
     server_thread.start()
     server_thread.join()
+    
     return auth_code
 
 def get_access_token(auth_code):
@@ -49,16 +52,20 @@ def get_access_token(auth_code):
         'code': auth_code,
         'redirect_uri': CALLBACK_URL
     }
+
     auth_string = f"{CLIENT_ID}:{CLIENT_SECRET}"
     auth_bytes = auth_string.encode('ascii')
     base64_bytes = base64.b64encode(auth_bytes)
     base64_string = base64_bytes.decode('ascii')
+
     headers = {
         'Authorization': f'Basic {base64_string}',
         'Content-Type': 'application/x-www-form-urlencoded'
     }
+
     response = requests.post(token_url, data=token_data, headers=headers)
     response_data = response.json()
+
     if response.status_code == 200:
         return response_data['access_token']
     else:
@@ -103,13 +110,15 @@ def print_folder_tree(access_token, project_id, folder_id, indent="", is_last=Tr
         contents = get_folder_contents(access_token, project_id, folder_id)
         folders = [item for item in contents if item['type'] == 'folders']
         files = [item for item in contents if item['type'] == 'items']
+
         for i, folder in enumerate(folders):
             is_last_folder = (i == len(folders) - 1) and (len(files) == 0)
             folder_name = folder['attributes'].get('name', 'Unknown Folder')
             folder_id = folder.get('id', 'Unknown ID')
             print(f"{indent}{'└── ' if is_last_folder else '├── '}{folder_name} (ID: {folder_id})")
-            new_indent = indent + (" " if is_last_folder else "│ ")
+            new_indent = indent + ("    " if is_last_folder else "│   ")
             print_folder_tree(access_token, project_id, folder_id, new_indent, is_last_folder)
+
         for i, file in enumerate(files):
             is_last_file = i == len(files) - 1
             file_name = file['attributes'].get('name', 'Unknown File')
@@ -122,6 +131,7 @@ def get_file_attributes(access_token, project_id, file_id):
     file_detail_url = f'https://developer.api.autodesk.com/data/v1/projects/{project_id}/items/{file_id}'
     headers = {'Authorization': f'Bearer {access_token}'}
     response = requests.get(file_detail_url, headers=headers)
+
     if response.status_code == 200:
         file_detail = response.json()
         return file_detail['data']['attributes']
@@ -133,6 +143,7 @@ def get_folder_attributes(access_token, project_id, folder_id):
     folder_detail_url = f'https://developer.api.autodesk.com/data/v1/projects/{project_id}/folders/{folder_id}'
     headers = {'Authorization': f'Bearer {access_token}'}
     response = requests.get(folder_detail_url, headers=headers)
+
     if response.status_code == 200:
         folder_detail = response.json()
         return folder_detail['data']['attributes']
@@ -159,45 +170,37 @@ def print_attributes(attributes, item_type):
         print(f"説明: {attributes.get('extension', {}).get('data', {}).get('description', 'N/A')}")
         print("-" * 50)
 
-def get_versions_batch(access_token, project_id, urns):
-    url = f"https://developer.api.autodesk.com/bim360/docs/v1/projects/{project_id}/versions:batch-get"
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'Content-Type': 'application/json'
-    }
-    data = {
-        "urns": urns
-    }
-    response = requests.post(url, headers=headers, data=json.dumps(data))
-    if response.status_code == 200:
-        return response.json()
-    else:
-        print(f"Error: Unable to retrieve versions. Status code: {response.status_code}")
-        return None
-
 if __name__ == '__main__':
     try:
         auth_code = get_auth_code()
         if auth_code:
             token = get_access_token(auth_code)
+            
+            # hub_id = input("Hub IDを入力してください: ")
             hub_id = 'b.21cd4449-77cc-4f14-8dd8-597a5dfef551'
+            # projects = get_projects(token, hub_id)
+            
+            # print("利用可能なプロジェクト:")
+            # for project in projects:
+            #     print(f"- {project['attributes']['name']} (ID: {project['id']})")
+            
+            # project_id = input("プロジェクトIDを入力してください: ")
             project_id = 'b.1fd68d4e-de62-4bc3-a909-8b0baeec77e4'  # ← 6-4512_BIM Training 2
-
-            # folder_id = input("\n属性を取得するフォルダIDを入力してください: ")
-            folder_id = "urn:adsk.wipprod:fs.folder:co.Lkhbj4P6TAOWxEbCSjhsBA"
-
+            
+            # top_folders = get_top_folders(token, hub_id, project_id)
+            # print("\nフォルダ構造:")
+            # for i, folder in enumerate(top_folders):
+            #     is_last = i == len(top_folders) - 1
+            #     print(f"{'└── ' if is_last else '├── '}{folder['attributes']['name']} (ID: {folder['id']})")
+            #     print_folder_tree(token, project_id, folder['id'], "    " if is_last else "│   ")
+            
+            folder_id = input("\n属性を取得するフォルダIDを入力してください: ")
             contents = get_folder_contents(token, project_id, folder_id)
+
             print("\n取得した項目の属性情報:")
             for item in contents:
                 attributes = get_item_attributes(token, project_id, item['id'], item['type'])
                 print_attributes(attributes, item['type'])
-
-            # バージョン情報の取得
-            urns = ["urn:adsk.wipprod:fs.file:vf.AS3XD9MzQvu4MakMF-w7vQ?version=1"]
-            versions = get_versions_batch(token, project_id, urns)
-            if versions:
-                print("\nバージョン情報:")
-                print(json.dumps(versions, indent=2))
         else:
             print("認証コードの取得に失敗しました。プログラムを終了します。")
     except Exception as e:

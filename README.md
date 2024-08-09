@@ -36,6 +36,23 @@ python -m pip freeze > requirements.txt
 # ACC ID info
 
 ```text
+"6-4512_BIM Traning 2" > "A_WIP" > "_collab_ARC" > "Consumed"
+
+取得した項目の属性情報:
+document_id: urn:adsk.wipprod:fs.file:vf.3Lqfodg2RB6FYptKDOZ6-Q?version=1
+
+フォルダ名: Consumed
+ID: urn:adsk.wipprod:fs.folder:co.bbBsDQe2QDWHWZMhIMr3PQ
+作成日時: 2024-04-02T08:31:41.0000000Z
+作成者: SOONOK HYEON
+最終更新日時: 2024-08-09T06:15:49.0000000Z
+最終更新者: KEISUKE ITO
+説明: N/A
+バージョン: 1.0
+フォルダ内のファイル: 1
+
+
+
 Hub ID: b.21cd4449-77cc-4f14-8dd8-597a5dfef551, Name: JGC GLOBAL ESC
   Project ID: b.01d565fa-872c-4f6b-95ae-ea8cbca344fc, Name: 7-0627_JGC Group Standard Establishment
   Project ID: b.07056904-2be0-4aff-8aea-33afc5a7d4c8, Name: 701211-00_JGC BIM STANDARD
