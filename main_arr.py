@@ -11,7 +11,7 @@ import config
 CLIENT_ID = config.CLIENT_ID
 CLIENT_SECRET = config.CLIENT_SECRET
 CALLBACK_URL = config.CALLBACK_URL
-SCOPES = ['data:read', 'data:write', 'data:create']
+SCOPES = ['data:read', 'data:write', 'data:create', 'account:read', 'account:write']
 
 # グローバル変数で認証コードを保存
 auth_code = None
@@ -93,18 +93,6 @@ def get_top_folders(access_token, hub_id, project_id):
     else:
         raise Exception(f"トップフォルダ取得エラー: {response.text}")
 
-def get_folder_contents(access_token, project_id, folder_id):
-    url = f"https://developer.api.autodesk.com/data/v1/projects/{project_id}/folders/{folder_id}/contents"
-    headers = {
-        'Authorization': f'Bearer {access_token}'
-    }
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.json().get('data', [])
-    else:
-        print(f"Warning: Unable to retrieve folder contents. Status code: {response.status_code}")
-        return []
-
 def print_folder_tree(access_token, project_id, folder_id, indent="", is_last=True):
     try:
         contents = get_folder_contents(access_token, project_id, folder_id)
@@ -127,37 +115,62 @@ def print_folder_tree(access_token, project_id, folder_id, indent="", is_last=Tr
     except Exception as e:
         print(f"{indent}Error: Unable to retrieve contents. {str(e)}")
 
-def get_file_attributes(access_token, project_id, file_id):
-    file_detail_url = f'https://developer.api.autodesk.com/data/v1/projects/{project_id}/items/{file_id}'
-    headers = {'Authorization': f'Bearer {access_token}'}
-    response = requests.get(file_detail_url, headers=headers)
-
+def get_folder_contents(access_token, project_id, folder_id):
+    url = f"https://developer.api.autodesk.com/data/v1/projects/{project_id}/folders/{folder_id}/contents"
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    response = requests.get(url, headers=headers)
     if response.status_code == 200:
-        file_detail = response.json()
-        return file_detail['data']['attributes']
+        return response.json().get('data', [])
     else:
-        print(f'Error retrieving file attributes for {file_id}: {response.status_code}')
-        return None
-
-def get_folder_attributes(access_token, project_id, folder_id):
-    folder_detail_url = f'https://developer.api.autodesk.com/data/v1/projects/{project_id}/folders/{folder_id}'
-    headers = {'Authorization': f'Bearer {access_token}'}
-    response = requests.get(folder_detail_url, headers=headers)
-
-    if response.status_code == 200:
-        folder_detail = response.json()
-        return folder_detail['data']['attributes']
-    else:
-        print(f'Error retrieving folder attributes for {folder_id}: {response.status_code}')
-        return None
+        print(f"Warning: Unable to retrieve folder contents. Status code: {response.status_code}")
+        return []
 
 def get_item_attributes(access_token, project_id, item_id, item_type):
     if item_type == 'items':
-        return get_file_attributes(access_token, project_id, item_id)
+        url = f'https://developer.api.autodesk.com/data/v1/projects/{project_id}/items/{item_id}'
     elif item_type == 'folders':
-        return get_folder_attributes(access_token, project_id, item_id)
+        url = f'https://developer.api.autodesk.com/data/v1/projects/{project_id}/folders/{item_id}'
     else:
         print(f'Unknown item type: {item_type}')
+        return None
+
+    headers = {'Authorization': f'Bearer {access_token}'}
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        item_detail = response.json()
+        attributes = item_detail['data']['attributes']
+        
+        # カスタム属性を取得
+        custom_attributes = get_custom_attributes(access_token, project_id, item_id)
+        if custom_attributes:
+            attributes['custom_attributes'] = custom_attributes
+
+        return attributes
+    else:
+        print(f'Error retrieving attributes for {item_id}: {response.status_code}')
+        return None
+
+def get_custom_attributes(access_token, project_id, item_id):
+    # url = f'https://developer.api.autodesk.com/bim360/docs/v1/projects/{project_id}/folders/{folder_id}/custom-attribute-definitions'
+    url = f'https://developer.api.autodesk.com/bim360/docs/v1/projects/{project_id}/versions:batch-get'
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        # 'Content-Type': 'application/json'
+    }
+    data = {
+        "urns": [item_id]
+    }
+    response = requests.post(url, headers=headers, json=data)
+
+    if response.status_code == 200:
+        version_data = response.json()['results'][0]
+        custom_attributes = version_data.get('customAttributes', {})
+        return custom_attributes
+    else:
+        print(f'Error retrieving custom attributes for {item_id}: {response.status_code}')
         return None
 
 def print_attributes(attributes, item_type):
@@ -168,6 +181,12 @@ def print_attributes(attributes, item_type):
         print(f"最終更新日時: {attributes['lastModifiedTime']}")
         print(f"最終更新者: {attributes['lastModifiedUserName']}")
         print(f"説明: {attributes.get('extension', {}).get('data', {}).get('description', 'N/A')}")
+        
+        # if 'custom_attributes' in attributes:
+        #     print("カスタム属性:")
+        #     for key, value in attributes['custom_attributes'].items():
+        #         print(f"  {key}: {value}")
+        
         print("-" * 50)
 
 if __name__ == '__main__':
@@ -175,7 +194,7 @@ if __name__ == '__main__':
         auth_code = get_auth_code()
         if auth_code:
             token = get_access_token(auth_code)
-            
+
             # hub_id = input("Hub IDを入力してください: ")
             hub_id = 'b.21cd4449-77cc-4f14-8dd8-597a5dfef551'
             # projects = get_projects(token, hub_id)
@@ -194,7 +213,9 @@ if __name__ == '__main__':
             #     print(f"{'└── ' if is_last else '├── '}{folder['attributes']['name']} (ID: {folder['id']})")
             #     print_folder_tree(token, project_id, folder['id'], "    " if is_last else "│   ")
             
-            folder_id = input("\n属性を取得するフォルダIDを入力してください: ")
+            # folder_id = input("\n属性を取得するフォルダIDを入力してください: ")
+            folder_id = "urn:adsk.wipprod:fs.folder:co.Lkhbj4P6TAOWxEbCSjhsBA"
+
             contents = get_folder_contents(token, project_id, folder_id)
 
             print("\n取得した項目の属性情報:")
