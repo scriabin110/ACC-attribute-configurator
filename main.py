@@ -112,7 +112,7 @@ def main():
 
         if st.button("カスタム属性を更新"):
             result = update_custom_Attribute(st.session_state.token)
-            st.json(result)
+            st.dataframe(result)
 
 if __name__ == '__main__':
     main()

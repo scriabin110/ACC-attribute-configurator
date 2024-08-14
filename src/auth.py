@@ -13,6 +13,8 @@ auth_code = None
 SCOPES = ['data:read', 'data:write', 'data:create']
 
 # CallbackHandler, start_server, get_auth_code, get_access_token 関数をここに配置
+import time
+
 class CallbackHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         global auth_code
@@ -22,7 +24,23 @@ class CallbackHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-        self.wfile.write(b'Authentication successful! You can close this window now.')
+        html_content = """
+        <html>
+        <head>
+            <title>Authentication Successful</title>
+            <script>
+                setTimeout(function() {
+                    window.close();
+                }, 2000);
+            </script>
+        </head>
+        <body>
+            <h1>Authentication successful!</h1>
+            <p>This window will close automatically in 2 seconds.</p>
+        </body>
+        </html>
+        """
+        self.wfile.write(html_content.encode('utf-8'))
 
 def start_server():
     server_address = ('', 8080)
@@ -33,11 +51,12 @@ def get_auth_code():
     auth_url = f"https://developer.api.autodesk.com/authentication/v2/authorize?response_type=code&client_id={config.CLIENT_ID}&redirect_uri={urllib.parse.quote_plus(config.CALLBACK_URL)}&scope={' '.join(SCOPES)}"
     st.write(f"ブラウザで認証ページを開きます。認証後、自動的にコードが取得されます。")
     st.write(f"認証URL: {auth_url}")
-    st.write("認証が完了したら、このページに戻ってきてください。")
-    webbrowser.open(auth_url)
+    st.write("認証が完了したら、ウィンドウは2秒後に自動的に閉じられます。")
+    webbrowser.open_new(auth_url)
     server_thread = threading.Thread(target=start_server)
     server_thread.start()
     server_thread.join()
+    time.sleep(2)  # 2秒待機してから認証コードを返す
     return auth_code
 
 def get_access_token(auth_code):

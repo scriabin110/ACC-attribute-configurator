@@ -1,6 +1,8 @@
 import requests
 import streamlit as st
 import urllib.parse
+import pandas as pd
+import json
 
 # get_projects, get_top_folders, get_folder_contents, get_file_attributes,
 # get_folder_attributes, get_item_attributes, get_document_id,
@@ -135,4 +137,6 @@ def update_custom_Attribute(token):
         }
     ]
     response = requests.post(url, headers=headers, json=data)
-    return response.json()
+    data = response.json()
+    df = pd.DataFrame(data['results'])
+    return df
