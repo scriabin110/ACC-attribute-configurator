@@ -180,7 +180,6 @@ def get_custom_Attribute_Definition(token):
     # hub_id = 'b.21cd4449-77cc-4f14-8dd8-597a5dfef551'
     project_id = 'b.1fd68d4e-de62-4bc3-a909-8b0baeec77e4'
     folder_id = 'urn:adsk.wipprod:fs.folder:co.bbBsDQe2QDWHWZMhIMr3PQ'
-    # url = f'https://developer.api.autodesk.com/bim360/docs/v1/projects/{project_id}/versions:batch-get'
     url = f'https://developer.api.autodesk.com/bim360/docs/v1/projects/{project_id}/folders/{folder_id}/custom-attribute-definitions'
     headers = {'Authorization': f'Bearer {token}'}
     data = {
@@ -190,6 +189,26 @@ def get_custom_Attribute_Definition(token):
     }
     # response = requests.post(url, headers=headers, json=data)
     response = requests.get(url, headers=headers)
+    return response.json()
+
+def update_custom_Attribute(token):
+    # token = get_access_token(auth_code)
+    # hub_id = 'b.21cd4449-77cc-4f14-8dd8-597a5dfef551'
+    project_id = 'b.1fd68d4e-de62-4bc3-a909-8b0baeec77e4'
+    # folder_id = 'urn:adsk.wipprod:fs.folder:co.bbBsDQe2QDWHWZMhIMr3PQ'
+    version_id = 'urn:adsk.wipprod:fs.file:vf.3Lqfodg2RB6FYptKDOZ6-Q?version=1'
+    url = f'https://developer.api.autodesk.com/bim360/docs/v1/projects/{project_id}/versions/{urllib.parse.quote(version_id, safe="")}/custom-attributes:batch-update'
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json'
+        }
+    data = [
+        {
+            "id": 5064287,
+            "value": "ほげほげ"
+        }
+    ]
+    response = requests.post(url, headers=headers, json=data)
     return response.json()
 
 if __name__ == '__main__':
@@ -211,6 +230,7 @@ if __name__ == '__main__':
             print(json.dumps(get_custom_Attribute(token), indent=2, ensure_ascii=False))
             print("="*50)
             print(json.dumps(get_custom_Attribute_Definition(token), indent=2, ensure_ascii=False))
+            print(update_custom_Attribute(token))
         else:
             print("認証コードの取得に失敗しました。プログラムを終了します。")
     except Exception as e:
