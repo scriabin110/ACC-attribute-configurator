@@ -85,19 +85,18 @@ def get_document_id(access_token, project_id, folder_id):
         for item in included:
             if 'id' in item:
                 return item['id']
-    return None
+    # return None
 
-def get_custom_Attribute(token):
+def get_custom_Attribute(token, project_id, urns):
     # token = get_access_token(auth_code)
     # hub_id = 'b.21cd4449-77cc-4f14-8dd8-597a5dfef551'
-    project_id = 'b.1fd68d4e-de62-4bc3-a909-8b0baeec77e4'
+    # urns = ['urn:adsk.wipprod:fs.file:vf.3Lqfodg2RB6FYptKDOZ6-Q?version=1']
+    # project_id = 'b.1fd68d4e-de62-4bc3-a909-8b0baeec77e4'
     # folder_id = 'urn:adsk.wipprod:fs.folder:co.Lkhbj4P6TAOWxEbCSjhsBA'
     url = f'https://developer.api.autodesk.com/bim360/docs/v1/projects/{project_id}/versions:batch-get'
     headers = {'Authorization': f'Bearer {token}'}
     data = {
-        'urns': [
-            'urn:adsk.wipprod:fs.file:vf.3Lqfodg2RB6FYptKDOZ6-Q?version=1'
-        ]
+        'urns': urns
     }
     response = requests.post(url, headers=headers, json=data)
     # response = requests.get(url, headers=headers)

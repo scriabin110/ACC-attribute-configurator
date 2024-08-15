@@ -28,7 +28,7 @@ def main():
         project_id_list = [i["id"] for i in project_list]
 
         project_dict = {name: id for name, id in zip(project_name_list, project_id_list)}
-        print(project_dict)
+        # print(project_dict)
         # project_id = 'b.1fd68d4e-de62-4bc3-a909-8b0baeec77e4'
         folder_id = "urn:adsk.wipprod:fs.folder:co.Lkhbj4P6TAOWxEbCSjhsBA"
 
@@ -44,7 +44,7 @@ def main():
         with st.spinner("フォルダ構造を取得中..."):
             top_folders = get_top_folders(st.session_state.token, hub_id, project_id)
         # st.write("トップフォルダの取得に成功しました！")
-        st.write(f"{top_folders[0]["attributes"]["name"]}")
+        # st.write(f"{top_folders[0]["attributes"]["name"]}")
 
         st.session_state.choosing_Folder = True
 
@@ -55,14 +55,17 @@ def main():
             folder_id = top_folders[0]["id"]
             folder_path = []
 
+
+            i = 1
             while True:
+                
                 contents = get_folder_contents(st.session_state.token, project_id, folder_id)
                 
                 # フォルダのみをフィルタリング
                 folders = [item for item in contents if item.get("type") == "folders"]
                 
                 if not folders:
-                    st.write("最下層のフォルダに到達しました。")
+                    st.markdown('**:red[最下層のフォルダに到達しました。]**')
                     break
 
                 folder_name_list = [folder["attributes"]["name"] for folder in folders]
@@ -70,30 +73,56 @@ def main():
                 folder_dict = {name: id for name, id in zip(folder_name_list, folder_id_list)}
                 
                 # 現在のフォルダパスを表示
-                st.write("現在のパス: " + " > ".join(folder_path))
+                # st.write("現在のパス: " + " > ".join(folder_path))
                 
                 selected_folder = st.selectbox(
-                    "サブフォルダを選択してください",
+                    f"サブフォルダ{i}を選択してください",
                     [""] + folder_name_list,
                     key=f"folder_select_{len(folder_path)}",
                     index=0
                 )
                 
                 if not selected_folder:
-                    st.write("フォルダ選択を終了します。")
+                    # st.write("フォルダ選択を終了します。")
                     break
                 
                 folder_id = folder_dict[selected_folder]
                 folder_path.append(selected_folder)
 
-            st.write("選択されたフォルダパス: " + " > ".join(folder_path))
+                i += 1
+
+            st.write("選択されたフォルダパス: ")
+            st.write(f"{top_folders[0]["attributes"]["name"]} > " + " > ".join(folder_path))
             st.write(f"最終選択フォルダID: {folder_id}")
 
             # ここで選択されたフォルダIDを使用して何か処理を行う
             # 例: 選択されたフォルダの内容を表示
             final_contents = get_folder_contents(st.session_state.token, project_id, folder_id)
-            st.write("選択されたフォルダの内容:")
+
+            urns = []
+            for item in final_contents:
+                attributes = get_item_attributes(st.session_state.token, project_id, item['id'], item['type'])
+                # document_id = get_document_id(st.session_state.token, project_id, item['id']) if item['type'] == 'folders' else None
+                if item['type'] == 'folders':
+                    urn = get_document_id(st.session_state.token, project_id, item['id'])
+                    if urn is not None:
+                        urns.append(urn)
+                else:
+                    pass
+                # st.write(f'document_id: {document_id}')
+            
+            st.header("(test):カスタム属性")
+            st.write(f"urns: {urns}")
+            st.write(get_custom_Attribute(st.session_state.token, project_id, urns))
+            
+            st.header("final_contents")            
             st.write(final_contents)
+
+            
+            # st.header("(test):カスタム属性")
+            # st.write(get_custom_Attribute(st.session_state.token, project_id, urns))
+            # st.write("選択されたフォルダの内容:")
+            # st.write(final_contents)
 
         # folder_id = top_folders[0]["id"]
         # contents = get_folder_contents(st.session_state.token, project_id, folder_id)
