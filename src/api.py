@@ -4,10 +4,6 @@ import urllib.parse
 import pandas as pd
 import json
 
-# get_projects, get_top_folders, get_folder_contents, get_file_attributes,
-# get_folder_attributes, get_item_attributes, get_document_id,
-# get_custom_Attribute, get_custom_Attribute_Definition, update_custom_Attribute 関数をここに配置
-
 def get_projects(access_token, hub_id):
     url = f"https://developer.api.autodesk.com/project/v1/hubs/{hub_id}/projects"
     headers = {
@@ -79,27 +75,29 @@ def get_document_id(access_token, project_id, folder_id):
         'Authorization': f'Bearer {access_token}'
     }
     response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        data = response.json()
-        included = data.get('included', [])
-        for item in included:
-            if 'id' in item:
-                return item['id']
+    
+    if response.status_code != 200:
+        print(f"エラー: APIリクエストが失敗しました。ステータスコード: {response.status_code}")
+        return []
+    
+    data = response.json()
+    included = data.get('included', [])
+    
+    document_ids = []
+    for item in included:
+        if 'id' in item:
+            document_ids.append(item['id'])
+    
+    return document_ids
     # return None
 
 def get_custom_Attribute(token, project_id, urns):
-    # token = get_access_token(auth_code)
-    # hub_id = 'b.21cd4449-77cc-4f14-8dd8-597a5dfef551'
-    # urns = ['urn:adsk.wipprod:fs.file:vf.3Lqfodg2RB6FYptKDOZ6-Q?version=1']
-    # project_id = 'b.1fd68d4e-de62-4bc3-a909-8b0baeec77e4'
-    # folder_id = 'urn:adsk.wipprod:fs.folder:co.Lkhbj4P6TAOWxEbCSjhsBA'
     url = f'https://developer.api.autodesk.com/bim360/docs/v1/projects/{project_id}/versions:batch-get'
     headers = {'Authorization': f'Bearer {token}'}
     data = {
         'urns': urns
     }
     response = requests.post(url, headers=headers, json=data)
-    # response = requests.get(url, headers=headers)
     return response.json()
 
 def get_custom_Attribute_Definition(token):

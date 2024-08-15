@@ -28,17 +28,12 @@ def main():
         project_id_list = [i["id"] for i in project_list]
 
         project_dict = {name: id for name, id in zip(project_name_list, project_id_list)}
-        # print(project_dict)
-        # project_id = 'b.1fd68d4e-de62-4bc3-a909-8b0baeec77e4'
         folder_id = "urn:adsk.wipprod:fs.folder:co.Lkhbj4P6TAOWxEbCSjhsBA"
 
         st.header("Select Project")
         project_name = st.selectbox("Select Project", project_name_list)
         project_id = project_dict[project_name]
         st.write(f"Selected Project: {project_name} (ID: {project_id})")
-        # st.write(get_projects(st.session_state.token, hub_id))
-
-        # st.write(get_top_folders(st.session_state.token, hub_id=hub_id, project_id=project_id))
 
         st.header("Folder Structure")
         with st.spinner("フォルダ構造を取得中..."):
@@ -72,9 +67,6 @@ def main():
                 folder_id_list = [folder["id"] for folder in folders]
                 folder_dict = {name: id for name, id in zip(folder_name_list, folder_id_list)}
                 
-                # 現在のフォルダパスを表示
-                # st.write("現在のパス: " + " > ".join(folder_path))
-                
                 selected_folder = st.selectbox(
                     f"サブフォルダ{i}を選択してください",
                     [""] + folder_name_list,
@@ -83,7 +75,6 @@ def main():
                 )
                 
                 if not selected_folder:
-                    # st.write("フォルダ選択を終了します。")
                     break
                 
                 folder_id = folder_dict[selected_folder]
@@ -99,17 +90,7 @@ def main():
             # 例: 選択されたフォルダの内容を表示
             final_contents = get_folder_contents(st.session_state.token, project_id, folder_id)
 
-            urns = []
-            for item in final_contents:
-                attributes = get_item_attributes(st.session_state.token, project_id, item['id'], item['type'])
-                # document_id = get_document_id(st.session_state.token, project_id, item['id']) if item['type'] == 'folders' else None
-                if item['type'] == 'folders':
-                    urn = get_document_id(st.session_state.token, project_id, item['id'])
-                    if urn is not None:
-                        urns.append(urn)
-                else:
-                    pass
-                # st.write(f'document_id: {document_id}')
+            urns = get_document_id(st.session_state.token, project_id, folder_id)
             
             st.header("(test):カスタム属性")
             st.write(f"urns: {urns}")
@@ -117,12 +98,6 @@ def main():
             
             st.header("final_contents")            
             st.write(final_contents)
-
-            
-            # st.header("(test):カスタム属性")
-            # st.write(get_custom_Attribute(st.session_state.token, project_id, urns))
-            # st.write("選択されたフォルダの内容:")
-            # st.write(final_contents)
 
         # folder_id = top_folders[0]["id"]
         # contents = get_folder_contents(st.session_state.token, project_id, folder_id)
