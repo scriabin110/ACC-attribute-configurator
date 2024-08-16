@@ -94,7 +94,34 @@ def main():
             
             st.header("(test):カスタム属性")
             st.write(f"urns: {urns}")
-            st.write(get_custom_Attribute(st.session_state.token, project_id, urns))
+
+            import pandas as pd
+            json_data = get_custom_Attribute(st.session_state.token, project_id, urns)['results']
+            
+            # カスタム属性を格納するリストを作成
+            custom_attributes = []
+
+            # 各アイテムのカスタム属性を抽出
+            for item in json_data:
+                name = item['name']
+                urn = item['urn']
+                for attr in item.get('customAttributes', []):
+                    custom_attributes.append({
+                        'file name': name,
+                        'urn': urn,
+                        'id': attr['id'],
+                        'type': attr['type'],
+                        'name': attr['name'],
+                        'value': attr['value']
+                    })
+
+            # pandasのDataFrameに変換
+            df = pd.DataFrame(custom_attributes)
+            st.dataframe(df)
+            st.table(df)
+
+            # st.write(json_data["customAttributes"])
+            st.write(json_data)
             
             st.header("final_contents")            
             st.write(final_contents)
