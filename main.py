@@ -3,11 +3,25 @@ import json
 from src.auth import get_auth_code, get_access_token
 from src.api import (get_projects, get_top_folders, get_folder_contents,
                      get_item_attributes, get_document_id, get_custom_Attribute,
-                     get_custom_Attribute_Definition, update_custom_Attribute)
+                     get_custom_Attribute_Definition, update_custom_Attribute, transform_data)
 from src.utils import print_attributes
+import const
+from streamlit_option_menu import option_menu
+
 
 def main():
-    st.title("Autodesk BIM 360 Explorer")
+    st.set_page_config(**const.SET_PAGE_CONFIG)
+    st.markdown(const.HIDE_ST_STYLE, unsafe_allow_html=True)
+    selected = option_menu(**const.OPTION_MENU_CONFIG)
+
+    # name = st.sidebar.text_input('あなたの名前は？')
+    # age = st.sidebar.slider('あなたの年齢は？', 0, 100, 10)
+
+    # '私の名前は', name, 'です。'
+    # '私の年齢は', age, '歳です。'
+
+
+    # st.title("Autodesk BIM 360 Explorer")
 
     if 'token' not in st.session_state:
         st.write("認証が必要です。以下のボタンをクリックして認証プロセスを開始してください。")
@@ -28,18 +42,13 @@ def main():
         project_id_list = [i["id"] for i in project_list]
 
         project_dict = {name: id for name, id in zip(project_name_list, project_id_list)}
-        folder_id = "urn:adsk.wipprod:fs.folder:co.Lkhbj4P6TAOWxEbCSjhsBA"
 
-        st.header("Select Project")
-        project_name = st.selectbox("Select Project", project_name_list)
+        st.sidebar.header("Project")
+        project_name = st.sidebar.selectbox("Select Project", project_name_list)
         project_id = project_dict[project_name]
-        st.write(f"Selected Project: {project_name} (ID: {project_id})")
 
-        st.header("Folder Structure")
         with st.spinner("フォルダ構造を取得中..."):
             top_folders = get_top_folders(st.session_state.token, hub_id, project_id)
-        # st.write("トップフォルダの取得に成功しました！")
-        # st.write(f"{top_folders[0]["attributes"]["name"]}")
 
         st.session_state.choosing_Folder = True
 
@@ -50,6 +59,7 @@ def main():
             folder_id = top_folders[0]["id"]
             folder_path = []
 
+            st.sidebar.markdown("**Folder Structure**")
 
             i = 1
             while True:
@@ -60,14 +70,14 @@ def main():
                 folders = [item for item in contents if item.get("type") == "folders"]
                 
                 if not folders:
-                    st.markdown('**:red[最下層のフォルダに到達しました。]**')
+                    st.sidebar.markdown('**:red[最下層のフォルダに到達しました。]**')
                     break
 
                 folder_name_list = [folder["attributes"]["name"] for folder in folders]
                 folder_id_list = [folder["id"] for folder in folders]
                 folder_dict = {name: id for name, id in zip(folder_name_list, folder_id_list)}
                 
-                selected_folder = st.selectbox(
+                selected_folder = st.sidebar.selectbox(
                     f"サブフォルダ{i}を選択してください",
                     [""] + folder_name_list,
                     key=f"folder_select_{len(folder_path)}",
@@ -82,18 +92,11 @@ def main():
 
                 i += 1
 
-            st.write("選択されたフォルダパス: ")
-            st.write(f"{top_folders[0]["attributes"]["name"]} > " + " > ".join(folder_path))
-            st.write(f"最終選択フォルダID: {folder_id}")
-
             # ここで選択されたフォルダIDを使用して何か処理を行う
             # 例: 選択されたフォルダの内容を表示
             final_contents = get_folder_contents(st.session_state.token, project_id, folder_id)
 
             urns = get_document_id(st.session_state.token, project_id, folder_id)
-            
-            st.header("(test):カスタム属性")
-            st.write(f"urns: {urns}")
 
             import pandas as pd
             json_data = get_custom_Attribute(st.session_state.token, project_id, urns)['results']
@@ -117,47 +120,22 @@ def main():
 
             # pandasのDataFrameに変換
             df = pd.DataFrame(custom_attributes)
-            st.dataframe(df)
-            st.table(df)
-
-            # st.write(json_data["customAttributes"])
-            st.write(json_data)
+            st.markdown("**Custom Attributes**")
+            edited_df = st.data_editor(df)
+            edited_data = edited_df.loc[:,["id","value"]].to_dict('index').values()
+            # st.write(edited_data)
+            dict = transform_data(edited_df.to_dict('index'))
+            # st.write(dict)
             
-            st.header("final_contents")            
-            st.write(final_contents)
-
-        # folder_id = top_folders[0]["id"]
-        # contents = get_folder_contents(st.session_state.token, project_id, folder_id)
-
-
-        # st.header("トップフォルダの中身？")
-        # st.write([i["attributes"]["name"] for i in contents])
-        # st.write(contents)
-
-
-        # with st.spinner("フォルダ構造を取得中..."):
-        #     top_folders = get_top_folders(st.session_state.token, hub_id, project_id)
-        
-        # ===== 240815 一旦下記をコメントアウト =====
-        # contents = get_folder_contents(st.session_state.token, project_id, folder_id)
-
-        # st.header("取得した項目の属性情報:")
-        # for item in contents:
-        #     attributes = get_item_attributes(st.session_state.token, project_id, item['id'], item['type'])
-        #     document_id = get_document_id(st.session_state.token, project_id, item['id']) if item['type'] == 'folders' else None
-        #     st.write(f'document_id: {document_id}')
-        #     print_attributes(attributes, item['type'], item['id'])
-
-        # st.header("カスタム属性:")
-        # st.json(get_custom_Attribute(st.session_state.token))
-
-        # st.header("カスタム属性定義:")
-        # st.json(get_custom_Attribute_Definition(st.session_state.token))
-
-        # if st.button("カスタム属性を更新"):
-        #     result = update_custom_Attribute(st.session_state.token)
-        #     st.dataframe(result)
-        # ===== 240815 コメントアウトここまで =====
+            if st.button("カスタム属性を更新"):
+                for urn, data_list in dict.items():
+                    update_custom_Attribute(
+                        token=st.session_state.token,
+                        project_id=project_id,
+                        urn=urn,
+                        data=data_list
+                    )
+                st.success("カスタム属性を更新しました！")
 
 if __name__ == '__main__':
     main()

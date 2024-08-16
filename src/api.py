@@ -3,6 +3,7 @@ import streamlit as st
 import urllib.parse
 import pandas as pd
 import json
+from collections import defaultdict
 
 def get_projects(access_token, hub_id):
     url = f"https://developer.api.autodesk.com/project/v1/hubs/{hub_id}/projects"
@@ -116,24 +117,40 @@ def get_custom_Attribute_Definition(token):
     response = requests.get(url, headers=headers)
     return response.json()
 
-def update_custom_Attribute(token):
+def update_custom_Attribute(token, project_id, urn, data):
     # token = get_access_token(auth_code)
     # hub_id = 'b.21cd4449-77cc-4f14-8dd8-597a5dfef551'
-    project_id = 'b.1fd68d4e-de62-4bc3-a909-8b0baeec77e4'
+    project_id = project_id
     # folder_id = 'urn:adsk.wipprod:fs.folder:co.bbBsDQe2QDWHWZMhIMr3PQ'
-    version_id = 'urn:adsk.wipprod:fs.file:vf.3Lqfodg2RB6FYptKDOZ6-Q?version=1'
-    url = f'https://developer.api.autodesk.com/bim360/docs/v1/projects/{project_id}/versions/{urllib.parse.quote(version_id, safe="")}/custom-attributes:batch-update'
+    # urn = 'urn:adsk.wipprod:fs.file:vf.3Lqfodg2RB6FYptKDOZ6-Q?version=1'
+    url = f'https://developer.api.autodesk.com/bim360/docs/v1/projects/{project_id}/versions/{urllib.parse.quote(urn, safe="")}/custom-attributes:batch-update'
     headers = {
         'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json'
         }
-    data = [
-        {
-            "id": 5064287,
-            "value": "ほげほげ"
-        }
-    ]
+    # data = [
+    #     {
+    #         "id": 5064287,
+    #         "value": "ほげほげ"
+    #     }
+    # ]
+    data = list(data)
     response = requests.post(url, headers=headers, json=data)
     data = response.json()
     df = pd.DataFrame(data['results'])
     return df
+
+def transform_data(input_data):
+    # urnでグループ化するための辞書を作成
+    result = defaultdict(list)
+
+    # 入力データを処理
+    for item in input_data.values():
+        urn = item['urn']
+        result[urn].append({
+            'id': item['id'],
+            'value': item['value']
+        })
+
+    # defaultdictを通常の辞書に変換
+    return dict(result)
