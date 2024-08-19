@@ -1,54 +1,19 @@
 import requests
 import base64
-import webbrowser
 import streamlit as st
-from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.parse
-import threading
-import config
 import time
-import os
 
-# Streamlit Cloudで動作しているかどうかを確認
-# is_streamlit_cloud = os.environ.get('STREAMLIT_CLOUD') == 'true'
-
-# if is_streamlit_cloud:
-# Streamlit Cloudで動作している場合の設定
 CLIENT_ID = st.secrets["CLIENT_ID"]
 CLIENT_SECRET = st.secrets["CLIENT_SECRET"]
 CALLBACK_URL = st.secrets["CALLBACK_URL"]
-# else:
-#     # ローカル環境での設定
-#     CLIENT_ID = config.CLIENT_ID
-#     CLIENT_SECRET = config.CLIENT_SECRET
-#     CALLBACK_URL = config.CALLBACK_URL
 
-# グローバル変数で認証コードを保存
-auth_code = None
 SCOPES = ['data:read', 'data:write', 'data:create']
-
-class CallbackHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        global auth_code
-        query = urllib.parse.urlparse(self.path).query
-        params = urllib.parse.parse_qs(query)
-        auth_code = params.get('code', [None])[0]
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-        self.wfile.write(b'Authentication successful! You can close this window now.')
-
-def start_server():
-    server_address = ('', 8080)
-    httpd = HTTPServer(server_address, CallbackHandler)
-    httpd.handle_request()
 
 def get_auth_code():
     auth_url = f"https://developer.api.autodesk.com/authentication/v2/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri={urllib.parse.quote_plus(CALLBACK_URL)}&scope={' '.join(SCOPES)}"
-    webbrowser.open_new(auth_url)
-    server_thread = threading.Thread(target=start_server)
-    server_thread.start()
-    server_thread.join()
+    st.markdown(f"[認証ページを開く]({auth_url})")
+    auth_code = st.text_input("認証コードを入力してください:")
     return auth_code
 
 def get_access_token(auth_code):

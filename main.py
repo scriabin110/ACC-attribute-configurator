@@ -28,10 +28,9 @@ def initialize_session_state():
 def main():
     st.set_page_config(**const.SET_PAGE_CONFIG)
     st.markdown(const.HIDE_ST_STYLE, unsafe_allow_html=True)
-    
+
     initialize_session_state()
 
-    # オプションメニュー（タブ）の作成
     selected = option_menu(
         menu_title=const.OPTION_MENU_CONFIG["menu_title"],
         options=const.OPTION_MENU_CONFIG["options"],
@@ -43,25 +42,24 @@ def main():
     )
 
     if not st.session_state.token:
-        st.write("認証が必要です。以下のボタンをクリックして認証プロセスを開始してください。")
-        if st.button("認証を開始"):
-            auth_code = get_auth_code()
-            if auth_code:
-                st.session_state.token = get_access_token(auth_code)
-                st.success("認証が成功しました！")
-            else:
-                st.error("認証コードの取得に失敗しました。")
-                return
-    
+        st.write("認証が必要です。以下のリンクをクリックして認証プロセスを開始してください。")
+        auth_code = get_auth_code()
+        if auth_code:
+            st.session_state.token = get_access_token(auth_code)
+            st.success("認証が成功しました！")
+        else:
+            st.error("認証コードを入力してください。")
+            return
+
     if st.session_state.token:
         hub_id = 'b.21cd4449-77cc-4f14-8dd8-597a5dfef551'
-        
+
         if not st.session_state.project_list:
             with st.spinner("プロジェクトリストを取得中..."):
                 st.session_state.project_list = get_projects(st.session_state.token, hub_id=hub_id)
-                project_name_list = [i["attributes"]["name"] for i in st.session_state.project_list]
-                project_id_list = [i["id"] for i in st.session_state.project_list]
-                st.session_state.project_dict = {name: id for name, id in zip(project_name_list, project_id_list)}
+            project_name_list = [i["attributes"]["name"] for i in st.session_state.project_list]
+            project_id_list = [i["id"] for i in st.session_state.project_list]
+            st.session_state.project_dict = {name: id for name, id in zip(project_name_list, project_id_list)}
 
         st.sidebar.header("Project")
         project_name = st.sidebar.selectbox("Select Project", list(st.session_state.project_dict.keys()))
@@ -78,16 +76,13 @@ def main():
                 st.session_state.top_folders = get_top_folders(st.session_state.token, hub_id, project_id)
 
         st.sidebar.markdown("**Folder Structure**")
-
         folder_id = st.session_state.top_folders[0]["id"]
         folder_path = []
-
         i = 1
+
         while True:
             contents = get_folder_contents(st.session_state.token, project_id, folder_id)
-            
             folders = [item for item in contents if item.get("type") == "folders"]
-            
             if not folders:
                 st.sidebar.markdown('**:red[最下層のフォルダに到達しました。]**')
                 break
@@ -95,20 +90,19 @@ def main():
             folder_name_list = [folder["attributes"]["name"] for folder in folders]
             folder_id_list = [folder["id"] for folder in folders]
             folder_dict = {name: id for name, id in zip(folder_name_list, folder_id_list)}
-            
+
             selected_folder = st.sidebar.selectbox(
                 f"サブフォルダ{i}を選択してください",
                 [""] + folder_name_list,
                 key=f"folder_select_{len(folder_path)}",
                 index=0
             )
-            
+
             if not selected_folder:
                 break
-            
+
             folder_id = folder_dict[selected_folder]
             folder_path.append(selected_folder)
-
             i += 1
 
         if folder_id != st.session_state.current_folder_id:
@@ -119,9 +113,7 @@ def main():
             try:
                 if st.session_state.urns:
                     json_data = get_custom_Attribute(st.session_state.token, project_id, st.session_state.urns)['results']
-
                     custom_attributes = []
-
                     for item in json_data:
                         name = item['name']
                         urn = item['urn']
@@ -138,9 +130,9 @@ def main():
                     df = pd.DataFrame(custom_attributes)
                     st.markdown("**Custom Attributes**")
                     edited_df = st.data_editor(df)
-                    
+
                     dict = transform_data(edited_df.to_dict('index'))
-                    
+
                     if st.button("カスタム属性を更新"):
                         for urn, data_list in dict.items():
                             update_custom_Attribute(
@@ -152,17 +144,14 @@ def main():
                         st.success("カスタム属性を更新しました！")
                 else:
                     st.warning("フォルダ内にファイルが存在しません。")
-
             except Exception as e:
                 st.error(f"エラーが発生しました: {str(e)}")
-        
+
         elif selected == "Batch Update":
             uploaded_file = st.file_uploader("Batch Update", type=["csv", "xlsx", "xls"])
-            
             if uploaded_file is not None:
                 try:
                     file_extension = uploaded_file.name.split('.')[-1].lower()
-                    
                     if file_extension == "csv":
                         df = pd.read_csv(uploaded_file)
                     elif file_extension in ["xlsx", "xls"]:
@@ -170,10 +159,10 @@ def main():
                     else:
                         st.error("サポートされていないファイル形式です。")
                         return
-                    
+
                     st.dataframe(df)
                     dict = transform_data(df.to_dict('index'))
-                    
+
                     if st.button("カスタム属性を更新"):
                         for urn, data_list in dict.items():
                             update_custom_Attribute(
