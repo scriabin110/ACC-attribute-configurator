@@ -12,7 +12,8 @@ SCOPES = ['data:read', 'data:write', 'data:create']
 
 def get_auth_code():
     auth_url = f"https://developer.api.autodesk.com/authentication/v2/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri={urllib.parse.quote_plus(CALLBACK_URL)}&scope={' '.join(SCOPES)}"
-    st.markdown(f"[認証ページを開く]({auth_url})")
+    # st.markdown(f"[認証ページを開く]({auth_url})")
+    st.link_button("Authenticate", auth_url)
     auth_code = st.text_input("認証コードを入力してください:")
     return auth_code
 
