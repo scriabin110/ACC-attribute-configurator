@@ -10,18 +10,18 @@ import time
 import os
 
 # Streamlit Cloudで動作しているかどうかを確認
-is_streamlit_cloud = os.environ.get('STREAMLIT_CLOUD') == 'true'
+# is_streamlit_cloud = os.environ.get('STREAMLIT_CLOUD') == 'true'
 
-if is_streamlit_cloud:
-    # Streamlit Cloudで動作している場合の設定
-    CLIENT_ID = st.secrets["CLIENT_ID"]
-    CLIENT_SECRET = st.secrets["CLIENT_SECRET"]
-    CALLBACK_URL = st.secrets["CALLBACK_URL"]
-else:
-    # ローカル環境での設定
-    CLIENT_ID = config.CLIENT_ID
-    CLIENT_SECRET = config.CLIENT_SECRET
-    CALLBACK_URL = config.CALLBACK_URL
+# if is_streamlit_cloud:
+# Streamlit Cloudで動作している場合の設定
+CLIENT_ID = st.secrets["CLIENT_ID"]
+CLIENT_SECRET = st.secrets["CLIENT_SECRET"]
+CALLBACK_URL = st.secrets["CALLBACK_URL"]
+# else:
+#     # ローカル環境での設定
+#     CLIENT_ID = config.CLIENT_ID
+#     CLIENT_SECRET = config.CLIENT_SECRET
+#     CALLBACK_URL = config.CALLBACK_URL
 
 # グローバル変数で認証コードを保存
 auth_code = None
