@@ -137,8 +137,8 @@ def update_custom_Attribute(token, project_id, urn, data):
     data = list(data)
     response = requests.post(url, headers=headers, json=data)
     data = response.json()
-    df = pd.DataFrame(data['results'])
-    return df
+    # df = pd.DataFrame(data['results'])
+    return data
 
 def transform_data(input_data):
     # urnでグループ化するための辞書を作成

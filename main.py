@@ -7,21 +7,23 @@ from src.api import (get_projects, get_top_folders, get_folder_contents,
 from src.utils import print_attributes
 import const
 from streamlit_option_menu import option_menu
+import pandas as pd
 
 
 def main():
     st.set_page_config(**const.SET_PAGE_CONFIG)
     st.markdown(const.HIDE_ST_STYLE, unsafe_allow_html=True)
-    selected = option_menu(**const.OPTION_MENU_CONFIG)
-
-    # name = st.sidebar.text_input('あなたの名前は？')
-    # age = st.sidebar.slider('あなたの年齢は？', 0, 100, 10)
-
-    # '私の名前は', name, 'です。'
-    # '私の年齢は', age, '歳です。'
-
-
-    # st.title("Autodesk BIM 360 Explorer")
+    
+    # オプションメニュー（タブ）の作成
+    selected = option_menu(
+        menu_title=const.OPTION_MENU_CONFIG["menu_title"],
+        options=const.OPTION_MENU_CONFIG["options"],
+        icons=const.OPTION_MENU_CONFIG["icons"],
+        menu_icon=const.OPTION_MENU_CONFIG["menu_icon"],
+        default_index=const.OPTION_MENU_CONFIG["default_index"],
+        orientation=const.OPTION_MENU_CONFIG["orientation"],
+        styles=const.OPTION_MENU_CONFIG["styles"],
+    )
 
     if 'token' not in st.session_state:
         st.write("認証が必要です。以下のボタンをクリックして認証プロセスを開始してください。")
@@ -92,50 +94,84 @@ def main():
 
                 i += 1
 
-            # ここで選択されたフォルダIDを使用して何か処理を行う
-            # 例: 選択されたフォルダの内容を表示
-            final_contents = get_folder_contents(st.session_state.token, project_id, folder_id)
-
             urns = get_document_id(st.session_state.token, project_id, folder_id)
-
-            import pandas as pd
-            json_data = get_custom_Attribute(st.session_state.token, project_id, urns)['results']
             
-            # カスタム属性を格納するリストを作成
-            custom_attributes = []
-
-            # 各アイテムのカスタム属性を抽出
-            for item in json_data:
-                name = item['name']
-                urn = item['urn']
-                for attr in item.get('customAttributes', []):
-                    custom_attributes.append({
-                        'file name': name,
-                        'urn': urn,
-                        'id': attr['id'],
-                        'type': attr['type'],
-                        'name': attr['name'],
-                        'value': attr['value']
-                    })
-
-            # pandasのDataFrameに変換
-            df = pd.DataFrame(custom_attributes)
-            st.markdown("**Custom Attributes**")
-            edited_df = st.data_editor(df)
-            edited_data = edited_df.loc[:,["id","value"]].to_dict('index').values()
-            # st.write(edited_data)
-            dict = transform_data(edited_df.to_dict('index'))
-            # st.write(dict)
             
-            if st.button("カスタム属性を更新"):
-                for urn, data_list in dict.items():
-                    update_custom_Attribute(
-                        token=st.session_state.token,
-                        project_id=project_id,
-                        urn=urn,
-                        data=data_list
-                    )
-                st.success("カスタム属性を更新しました！")
+            if selected == "Manual Update":
+                try:
+                    json_data = get_custom_Attribute(st.session_state.token, project_id, urns)['results']
+
+                    # カスタム属性を格納するリストを作成
+                    custom_attributes = []
+
+                    # 各アイテムのカスタム属性を抽出
+                    for item in json_data:
+                        name = item['name']
+                        urn = item['urn']
+                        for attr in item.get('customAttributes', []):
+                            custom_attributes.append({
+                                'file name': name,
+                                'urn': urn,
+                                'id': attr['id'],
+                                'type': attr['type'],
+                                'name': attr['name'],
+                                'value': attr['value']
+                            })
+
+                    # pandasのDataFrameに変換
+                    df = pd.DataFrame(custom_attributes)
+                    st.markdown("**Custom Attributes**")
+                    edited_df = st.data_editor(df)
+                    # edited_data = edited_df.loc[:,["id","value"]].to_dict('index').values()
+                    # st.write(edited_data)
+                    dict = transform_data(edited_df.to_dict('index'))
+                    # st.write(dict)
+                    
+                    if st.button("カスタム属性を更新"):
+                        for urn, data_list in dict.items():
+                            update_custom_Attribute(
+                                token=st.session_state.token,
+                                project_id=project_id,
+                                urn=urn,
+                                data=data_list
+                            )
+                        st.success("カスタム属性を更新しました！")
+
+                except Exception as e:
+                    st.error(f"フォルダ内にファイルが存在しません。")
+            
+            elif selected == "Batch Update":
+                uploaded_file = st.file_uploader("Batch Update", type=["csv", "xlsx", "xls"])
+                
+                if uploaded_file is not None:
+                    try:
+                        file_extension = uploaded_file.name.split('.')[-1].lower()
+                        
+                        if file_extension == "csv":
+                            df = pd.read_csv(uploaded_file)
+                        elif file_extension in ["xlsx", "xls"]:
+                            df = pd.read_excel(uploaded_file, engine='openpyxl')
+                        else:
+                            st.error("サポートされていないファイル形式です。")
+                            return
+                        
+                        st.dataframe(df)
+                        dict = transform_data(df.to_dict('index'))
+                        
+                        if st.button("カスタム属性を更新"):
+                            for urn, data_list in dict.items():
+                                update_custom_Attribute(
+                                    token=st.session_state.token,
+                                    project_id=project_id,
+                                    urn=urn,
+                                    data=data_list
+                                )
+                            st.success("カスタム属性を更新しました！")
+                    except Exception as e:
+                        st.error(f"ファイルの読み込み中にエラーが発生しました: {str(e)}")
+                else:
+                    st.markdown('**:red[Upload File(.xlsx/.xls/.csv)]**')
+            
 
 if __name__ == '__main__':
     main()
