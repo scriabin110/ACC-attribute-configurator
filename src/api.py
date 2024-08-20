@@ -101,18 +101,18 @@ def get_custom_Attribute(token, project_id, urns):
     response = requests.post(url, headers=headers, json=data)
     return response.json()
 
-def get_custom_Attribute_Definition(token):
+def get_custom_Attribute_Definition(token, project_id, folder_id):
     # token = get_access_token(auth_code)
     # hub_id = 'b.21cd4449-77cc-4f14-8dd8-597a5dfef551'
-    project_id = 'b.1fd68d4e-de62-4bc3-a909-8b0baeec77e4'
-    folder_id = 'urn:adsk.wipprod:fs.folder:co.bbBsDQe2QDWHWZMhIMr3PQ'
+    # project_id = 'b.1fd68d4e-de62-4bc3-a909-8b0baeec77e4'
+    # folder_id = 'urn:adsk.wipprod:fs.folder:co.bbBsDQe2QDWHWZMhIMr3PQ'
     url = f'https://developer.api.autodesk.com/bim360/docs/v1/projects/{project_id}/folders/{folder_id}/custom-attribute-definitions'
     headers = {'Authorization': f'Bearer {token}'}
-    data = {
-        'urns': [
-            'urn:adsk.wipprod:fs.file:vf.3Lqfodg2RB6FYptKDOZ6-Q?version=1'
-        ]
-    }
+    # data = {
+    #     'urns': [
+    #         'urn:adsk.wipprod:fs.file:vf.3Lqfodg2RB6FYptKDOZ6-Q?version=1'
+    #     ]
+    # }
     # response = requests.post(url, headers=headers, json=data)
     response = requests.get(url, headers=headers)
     return response.json()
@@ -154,3 +154,18 @@ def transform_data(input_data):
 
     # defaultdictを通常の辞書に変換
     return dict(result)
+
+# issue_idとissue_titleをセットにした辞書を返す関数
+def get_issue_types(access_token, project_id):
+    url = f"https://developer.api.autodesk.com/construction/issues/v1/projects/{project_id}/issue-types"
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        dir_issue_types = {}
+        for i in response.json()["results"]:
+          dir_issue_types[i['title']] = i['id']
+        return dir_issue_types
+    else:
+        raise Exception(f"issues取得エラー: {response.text}")
