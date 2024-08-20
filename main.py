@@ -1,9 +1,10 @@
 import streamlit as st
-import json
+# import json
 from src.auth import get_auth_code, get_access_token
 from src.api import (get_projects, get_top_folders, get_folder_contents,
                      get_item_attributes, get_document_id, get_custom_Attribute,
-                     get_custom_Attribute_Definition, update_custom_Attribute, transform_data)
+                     get_custom_Attribute_Definition, update_custom_Attribute, transform_data,
+                     get_issue_types, get_issues)
 from src.utils import print_attributes
 import const
 from streamlit_option_menu import option_menu
@@ -176,6 +177,27 @@ def main():
                     st.error(f"ファイルの読み込み中にエラーが発生しました: {str(e)}")
             else:
                 st.markdown('**:red[Upload File(.xlsx/.xls/.csv)]**')
+        
+        elif selected == "Issue Config":
+            # st.write(project_id)
+            project_id_issue = project_id.split(".")[1]
+            issue_types = get_issue_types(st.session_state.token, project_id_issue)
+            st.write(issue_types)
+            issue_type_name = st.selectbox("Select Issue Type", issue_types, index=len(issue_types)-1)  #デフォルトでInformation Control Sheetを取得
+            issue_type_id = issue_types[issue_type_name]
+            st.write(issue_type_id)
+            st.write("-"*50)
+
+            issues = get_issues(st.session_state.token, project_id_issue, issue_type_id=issue_type_id)["results"]
+            issues_dir = {}
+            for issue in issues:
+                issues_dir[issue["id"]] = issue["title"]
+            st.write(issues_dir)
+
+
+            st.write(issues)
+
+
 
 if __name__ == '__main__':
     main()

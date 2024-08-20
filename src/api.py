@@ -169,3 +169,18 @@ def get_issue_types(access_token, project_id):
         return dir_issue_types
     else:
         raise Exception(f"issues取得エラー: {response.text}")
+
+def get_issues(access_token, project_id, issue_type_id="4be979b1-25fd-4807-be19-2c926e5899ab"):
+    # url = f"https://developer.api.autodesk.com/project/v1/hubs/{hub_id}/projects"
+    if issue_type_id is not None:
+      url = f"https://developer.api.autodesk.com/construction/issues/v1/projects/{project_id}/issues?filter[issueTypeId]={issue_type_id}"
+    else:
+      url = f"https://developer.api.autodesk.com/construction/issues/v1/projects/{project_id}/issues"
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"issues取得エラー: {response.text}")

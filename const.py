@@ -8,7 +8,7 @@ SET_PAGE_CONFIG = {
 
 OPTION_MENU_CONFIG = {
     "menu_title": "ACC Explorer",
-    "options": ["Manual Update", "Batch Update", "XXX"],
+    "options": ["Manual Update", "Batch Update", "Issue Config"],
     "icons": ["bi-chat-dots", "bi-cloud-arrow-up", "bi-book"],
     "menu_icon": "bi-search",
     "default_index": 0,
