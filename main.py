@@ -129,7 +129,7 @@ def main():
 
                     df = pd.DataFrame(custom_attributes)
                     st.markdown("**Custom Attributes**")
-                    edited_df = st.data_editor(df)
+                    edited_df = st.data_editor(data=df, disabled=("file name", "urn", 'id', 'type', 'name'))
 
                     dict = transform_data(edited_df.to_dict('index'))
 
