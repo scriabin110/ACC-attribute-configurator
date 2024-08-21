@@ -179,68 +179,56 @@ def main():
             # st.write(project_id)
             project_id_issue = project_id.split(".")[1]
             issue_types = get_issue_types(st.session_state.token, project_id_issue)
-            st.write(issue_types)
             issue_type_name = st.selectbox("Select Issue Type", issue_types, index=len(issue_types)-1)  #デフォルトでInformation Control Sheetを取得
             issue_type_id = issue_types[issue_type_name]
-            st.write(issue_type_id)
             st.write("-"*50)
 
-            
-            
             issues = get_issues(st.session_state.token, project_id_issue, issue_type_id=issue_type_id)["results"]
-            # issues_dir = {}
-            # for issue in issues:
-            #     issues_dir[issue["id"]] = issue["title"]
-            st.subheader("Issues_dir")
-            # st.write(issues_dir)
-            st.write("-"*50)
 
             issue_attribute_definitions = get_issue_attribute_definitions(st.session_state.token, project_id_issue)
-            st.subheader("Issue Attribute Definitions")
-            st.write(issue_attribute_definitions)
-            st.write("-"*50)
 
-            # issue_attribute_mappings = get_issue_attribute_mappings(st.session_state.token, project_id_issue)
-            st.subheader("Issue Attribute Mappings")
-            # st.write(issue_attribute_mappings)
-            st.write("-"*50)
+            n_patch_issue = len(issues)  # ここでissue数を指定
+            issues = issues[:n_patch_issue]  # issuesリストから指定数だけ取得
 
-            st.subheader("Issues")
-            dir = issues[0]
-            # df = pd.json_normalize(json)
-            st.write(f"Length of Issue: {len(dir)}")
-            st.write(dir)
+            patch_dirs = {}  # 辞書型オブジェクトとして初期化
 
-            permittedAttributes = dir["permittedAttributes"]
-            st.write(permittedAttributes)
-            print(permittedAttributes)
-            check_list = []
-            for i in permittedAttributes:
-                check_list.append(i in dir)
-            print(check_list)
+            for issue in issues:
+                issue_id = issue.get("id")
+                if not issue_id:
+                    st.warning(f"IDが見つかりません: {issue}")
+                    continue
 
-            patchable_attributes = [
-                "title", "description", "snapshotUrn", "issueSubtypeId", "status", 
-                "assignedTo", "assignedToType", "dueDate", "startDate", "locationId", "locationDetails", 
-                "rootCauseId", "published", "permittedActions", "watchers", "customAttributes", "gpsCordinates", "snapshotHasMarkups"
+                permittedAttributes = issue.get("permittedAttributes", [])
+
+                patchable_attributes = [
+                    "title", "description", "snapshotUrn", "issueSubtypeId", "status", 
+                    "assignedTo", "assignedToType", "dueDate", "startDate", "locationId", "locationDetails", 
+                    "rootCauseId", "published", "permittedActions", "watchers", "customAttributes", "gpsCoordinates", "snapshotHasMarkups"
                 ]
-            patch_dir = {}
-            for i in permittedAttributes:
-                if i in dir and i in patchable_attributes:
-                    patch_dir[i] = dir[i]
-            for i in patch_dir["customAttributes"]:
-                del i["type"], i["title"]
-            st.subheader("patch_dir")
-            st.write(patch_dir)
 
+                patch_dir = {}
+                for attr in permittedAttributes:
+                    if attr in issue and attr in patchable_attributes:
+                        patch_dir[attr] = issue[attr]
+
+                patch_dirs[issue_id] = patch_dir
+
+            # 辞書型オブジェクトをフラット化
+            flattened_issues = flatten_issue_data(patch_dirs, issue_attribute_definitions)
+
+            # Streamlitで表示
+            edited_df = st.data_editor(data=flattened_issues, disabled=("id", "issueSubtypeId"))
+            
+            unflattend_issues = unflatten_issue_data(edited_df, issue_attribute_definitions)
+
+            # パッチ処理
             if st.button("Update Issues"):
-                patch_issues(access_token=st.session_state.token, project_id=project_id_issue, issue_id="4e488bcb-04c0-4fc0-af81-44caa5c6ae5f", data=patch_dir)
-                st.success("Issuesを更新しました！")
-
-
-            # st.dataframe(df)
-
-
+                try:
+                    for issue_id, patch_data in unflattend_issues.items():
+                        patch_issues(access_token=st.session_state.token, project_id=project_id_issue, issue_id=issue_id, data=patch_data)
+                    st.success("Issuesを更新しました！")
+                except Exception as e:
+                    st.error(f"Error updating issue {issue_id}: {str(e)}")
 
 if __name__ == '__main__':
     main()
