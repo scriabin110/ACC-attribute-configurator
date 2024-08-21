@@ -185,14 +185,60 @@ def main():
             st.write(issue_type_id)
             st.write("-"*50)
 
+            
+            
             issues = get_issues(st.session_state.token, project_id_issue, issue_type_id=issue_type_id)["results"]
-            issues_dir = {}
-            for issue in issues:
-                issues_dir[issue["id"]] = issue["title"]
-            st.write(issues_dir)
+            # issues_dir = {}
+            # for issue in issues:
+            #     issues_dir[issue["id"]] = issue["title"]
+            st.subheader("Issues_dir")
+            # st.write(issues_dir)
+            st.write("-"*50)
+
+            issue_attribute_definitions = get_issue_attribute_definitions(st.session_state.token, project_id_issue)
+            st.subheader("Issue Attribute Definitions")
+            st.write(issue_attribute_definitions)
+            st.write("-"*50)
+
+            # issue_attribute_mappings = get_issue_attribute_mappings(st.session_state.token, project_id_issue)
+            st.subheader("Issue Attribute Mappings")
+            # st.write(issue_attribute_mappings)
+            st.write("-"*50)
+
+            st.subheader("Issues")
+            dir = issues[0]
+            # df = pd.json_normalize(json)
+            st.write(f"Length of Issue: {len(dir)}")
+            st.write(dir)
+
+            permittedAttributes = dir["permittedAttributes"]
+            st.write(permittedAttributes)
+            print(permittedAttributes)
+            check_list = []
+            for i in permittedAttributes:
+                check_list.append(i in dir)
+            print(check_list)
+
+            patchable_attributes = [
+                "title", "description", "snapshotUrn", "issueSubtypeId", "status", 
+                "assignedTo", "assignedToType", "dueDate", "startDate", "locationId", "locationDetails", 
+                "rootCauseId", "published", "permittedActions", "watchers", "customAttributes", "gpsCordinates", "snapshotHasMarkups"
+                ]
+            patch_dir = {}
+            for i in permittedAttributes:
+                if i in dir and i in patchable_attributes:
+                    patch_dir[i] = dir[i]
+            for i in patch_dir["customAttributes"]:
+                del i["type"], i["title"]
+            st.subheader("patch_dir")
+            st.write(patch_dir)
+
+            if st.button("Update Issues"):
+                patch_issues(access_token=st.session_state.token, project_id=project_id_issue, issue_id="4e488bcb-04c0-4fc0-af81-44caa5c6ae5f", data=patch_dir)
+                st.success("Issuesを更新しました！")
 
 
-            st.write(issues)
+            # st.dataframe(df)
 
 
 

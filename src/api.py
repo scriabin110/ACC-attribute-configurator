@@ -170,7 +170,7 @@ def get_issue_types(access_token, project_id):
     else:
         raise Exception(f"issues取得エラー: {response.text}")
 
-def get_issues(access_token, project_id, issue_type_id="4be979b1-25fd-4807-be19-2c926e5899ab"):
+def get_issues(access_token, project_id, issue_type_id=None):
     # url = f"https://developer.api.autodesk.com/project/v1/hubs/{hub_id}/projects"
     if issue_type_id is not None:
       url = f"https://developer.api.autodesk.com/construction/issues/v1/projects/{project_id}/issues?filter[issueTypeId]={issue_type_id}"
@@ -184,3 +184,40 @@ def get_issues(access_token, project_id, issue_type_id="4be979b1-25fd-4807-be19-
         return response.json()
     else:
         raise Exception(f"issues取得エラー: {response.text}")
+    
+def get_issue_attribute_mappings(access_token, project_id):
+    url = f"https://developer.api.autodesk.com/construction/issues/v1/projects/{project_id}/issue-attribute-mappings"
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"attribute_mappings取得エラー: {response.text}")
+
+def get_issue_attribute_definitions(access_token, project_id):
+    url = f"https://developer.api.autodesk.com/construction/issues/v1/projects/{project_id}/issue-attribute-definitions"
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"attribute_mappings取得エラー: {response.text}")
+
+def patch_issues(access_token, project_id, issue_id, data):
+    project_id = project_id
+    url = f'https://developer.api.autodesk.com/construction/issues/v1/projects/{project_id}/issues/{issue_id}'
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json'
+        }
+    # data = list(data)
+    response = requests.patch(url, headers=headers, json=data)
+    # response = requests.post(url, headers=headers, json=data)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"attribute_mappings取得エラー: {response.text}")    
