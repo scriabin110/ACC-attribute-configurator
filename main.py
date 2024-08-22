@@ -107,75 +107,82 @@ def main():
             st.session_state.current_folder_id = folder_id
             st.session_state.urns = get_document_id(st.session_state.token, project_id, folder_id)
 
-        if selected == "Manual Update":
-            try:
-                if st.session_state.urns:
-                    json_data = get_custom_Attribute(st.session_state.token, project_id, st.session_state.urns)['results']
-                    custom_attributes = []
-                    for item in json_data:
-                        name = item['name']
-                        urn = item['urn']
-                        for attr in item.get('customAttributes', []):
-                            custom_attributes.append({
-                                'file name': name,
-                                'urn': urn,
-                                'id': attr['id'],
-                                'type': attr['type'],
-                                'name': attr['name'],
-                                'value': attr['value']
-                            })
-
-                    df = pd.DataFrame(custom_attributes)
-                    st.markdown("**Custom Attributes**")
-                    edited_df = st.data_editor(data=df, disabled=("file name", "urn", 'id', 'type', 'name'))
-
-                    dict = transform_data(edited_df.to_dict('index'))
-
-                    if st.button("カスタム属性を更新"):
-                        for urn, data_list in dict.items():
-                            update_custom_Attribute(
-                                token=st.session_state.token,
-                                project_id=project_id,
-                                urn=urn,
-                                data=data_list
-                            )
-                        st.success("カスタム属性を更新しました！")
-                else:
-                    st.warning("フォルダ内にファイルが存在しません。")
-            except Exception as e:
-                st.error(f"エラーが発生しました: {str(e)}")
-
-        elif selected == "Batch Update":
-            uploaded_file = st.file_uploader("Batch Update", type=["csv", "xlsx", "xls"])
-            if uploaded_file is not None:
+        if selected == "Document Management":
+            tab1, tab2 = st.tabs(["🦾 Manual Update", "📈 Custom Attributes"])
+            
+            # "🦾 Manual Update"
+            with tab1:
                 try:
-                    file_extension = uploaded_file.name.split('.')[-1].lower()
-                    if file_extension == "csv":
-                        df = pd.read_csv(uploaded_file)
-                    elif file_extension in ["xlsx", "xls"]:
-                        df = pd.read_excel(uploaded_file, engine='openpyxl')
+                    if st.session_state.urns:
+                        json_data = get_custom_Attribute(st.session_state.token, project_id, st.session_state.urns)['results']
+                        custom_attributes = []
+                        for item in json_data:
+                            name = item['name']
+                            urn = item['urn']
+                            for attr in item.get('customAttributes', []):
+                                custom_attributes.append({
+                                    'file name': name,
+                                    'urn': urn,
+                                    'id': attr['id'],
+                                    'type': attr['type'],
+                                    'name': attr['name'],
+                                    'value': attr['value']
+                                })
+
+                        df = pd.DataFrame(custom_attributes)
+                        st.markdown("**Custom Attributes**")
+                        edited_df = st.data_editor(data=df, disabled=("file name", "urn", 'id', 'type', 'name'))
+
+                        dict = transform_data(edited_df.to_dict('index'))
+
+                        if st.button("カスタム属性を更新"):
+                            for urn, data_list in dict.items():
+                                update_custom_Attribute(
+                                    token=st.session_state.token,
+                                    project_id=project_id,
+                                    urn=urn,
+                                    data=data_list
+                                )
+                            st.success("カスタム属性を更新しました！")
                     else:
-                        st.error("サポートされていないファイル形式です。")
-                        return
-
-                    st.dataframe(df)
-                    dict = transform_data(df.to_dict('index'))
-
-                    if st.button("カスタム属性を更新"):
-                        for urn, data_list in dict.items():
-                            update_custom_Attribute(
-                                token=st.session_state.token,
-                                project_id=project_id,
-                                urn=urn,
-                                data=data_list
-                            )
-                        st.success("カスタム属性を更新しました！")
+                        st.warning("フォルダ内にファイルが存在しません。")
                 except Exception as e:
-                    st.error(f"ファイルの読み込み中にエラーが発生しました: {str(e)}")
-            else:
-                st.markdown('**:red[Upload File(.xlsx/.xls/.csv)]**')
+                    st.error(f"エラーが発生しました: {str(e)}")
+            
+            #"📈 Custom Attributes"
+            with tab2:
+                uploaded_file = st.file_uploader("Batch Update", type=["csv", "xlsx", "xls"])
+                if uploaded_file is not None:
+                    try:
+                        file_extension = uploaded_file.name.split('.')[-1].lower()
+                        if file_extension == "csv":
+                            df = pd.read_csv(uploaded_file)
+                        elif file_extension in ["xlsx", "xls"]:
+                            df = pd.read_excel(uploaded_file, engine='openpyxl')
+                        else:
+                            st.error("サポートされていないファイル形式です。")
+                            return
+
+                        st.dataframe(df)
+                        dict = transform_data(df.to_dict('index'))
+
+                        if st.button("カスタム属性を更新"):
+                            for urn, data_list in dict.items():
+                                update_custom_Attribute(
+                                    token=st.session_state.token,
+                                    project_id=project_id,
+                                    urn=urn,
+                                    data=data_list
+                                )
+                            st.success("カスタム属性を更新しました！")
+                    except Exception as e:
+                        st.error(f"ファイルの読み込み中にエラーが発生しました: {str(e)}")
+                else:
+                    st.markdown('**:red[Upload File(.xlsx/.xls/.csv)]**')
         
         elif selected == "Issue Config":
+            tab1, tab2 = st.tabs(["🦾 Manual Update", "📈 Custom Attributes"])
+            
             # st.write(project_id)
             project_id_issue = project_id.split(".")[1]
             issue_types = get_issue_types(st.session_state.token, project_id_issue)
@@ -187,48 +194,107 @@ def main():
 
             issue_attribute_definitions = get_issue_attribute_definitions(st.session_state.token, project_id_issue)
 
-            n_patch_issue = len(issues)  # ここでissue数を指定
-            issues = issues[:n_patch_issue]  # issuesリストから指定数だけ取得
+            # "🦾 Manual Update"
+            with tab1:
+                n_patch_issue = len(issues)  # ここでissue数を指定
+                issues = issues[:n_patch_issue]  # issuesリストから指定数だけ取得
 
-            patch_dirs = {}  # 辞書型オブジェクトとして初期化
+                patch_dirs = {}  # 辞書型オブジェクトとして初期化
 
-            for issue in issues:
-                issue_id = issue.get("id")
-                if not issue_id:
-                    st.warning(f"IDが見つかりません: {issue}")
-                    continue
+                for issue in issues:
+                    issue_id = issue.get("id")
+                    if not issue_id:
+                        st.warning(f"IDが見つかりません: {issue}")
+                        continue
 
-                permittedAttributes = issue.get("permittedAttributes", [])
+                    permittedAttributes = issue.get("permittedAttributes", [])
 
-                patchable_attributes = [
-                    "title", "description", "snapshotUrn", "issueSubtypeId", "status", 
-                    "assignedTo", "assignedToType", "dueDate", "startDate", "locationId", "locationDetails", 
-                    "rootCauseId", "published", "permittedActions", "watchers", "customAttributes", "gpsCoordinates", "snapshotHasMarkups"
-                ]
+                    patchable_attributes = [
+                        "title", "description", "snapshotUrn", "issueSubtypeId", "status", 
+                        "assignedTo", "assignedToType", "dueDate", "startDate", "locationId", "locationDetails", 
+                        "rootCauseId", "published", "permittedActions", "watchers", "customAttributes", "gpsCoordinates", "snapshotHasMarkups"
+                    ]
 
-                patch_dir = {}
-                for attr in permittedAttributes:
-                    if attr in issue and attr in patchable_attributes:
-                        patch_dir[attr] = issue[attr]
+                    patch_dir = {}
+                    for attr in permittedAttributes:
+                        if attr in issue and attr in patchable_attributes:
+                            patch_dir[attr] = issue[attr]
 
-                patch_dirs[issue_id] = patch_dir
+                    patch_dirs[issue_id] = patch_dir
 
-            # 辞書型オブジェクトをフラット化
-            flattened_issues = flatten_issue_data(patch_dirs, issue_attribute_definitions)
+                # 辞書型オブジェクトをフラット化
+                flattened_issues = flatten_issue_data(patch_dirs, issue_attribute_definitions)
 
-            # Streamlitで表示
-            edited_df = st.data_editor(data=flattened_issues, disabled=("id", "issueSubtypeId"))
+                # Streamlitで表示
+                edited_df = st.data_editor(data=flattened_issues, disabled=("id", "issueSubtypeId"))
+                
+                unflattend_issues = unflatten_issue_data(edited_df, issue_attribute_definitions)
+
+                # パッチ処理
+                if st.button("Update Issues"):
+                    try:
+                        for issue_id, patch_data in unflattend_issues.items():
+                            patch_issues(access_token=st.session_state.token, project_id=project_id_issue, issue_id=issue_id, data=patch_data)
+                        st.success("Issuesを更新しました！")
+                    except Exception as e:
+                        st.error(f"Error updating issue {issue_id}: {str(e)}")
+
+            # "📈 Custom Attributes"
+            with tab2:
+                uploaded_file = st.file_uploader("Batch Update", type=["csv", "xlsx", "xls"])
+                if uploaded_file is not None:
+                    try:
+                        file_extension = uploaded_file.name.split('.')[-1].lower()
+                        if file_extension == "csv":
+                            df = pd.read_csv(uploaded_file)
+                        elif file_extension in ["xlsx", "xls"]:
+                            df = pd.read_excel(uploaded_file, engine='openpyxl')
+                        else:
+                            st.error("サポートされていないファイル形式です。")
+                            return
+
+                        # NaN値を None に置換
+                        df = df.where(pd.notnull(df), None)
+
+                        st.dataframe(df)
+                        
+                        # DataFrameを辞書のリストに変換し、NaN値をNoneに置換
+                        records = df.to_dict('records')
+                        for record in records:
+                            for key, value in record.items():
+                                if pd.isna(value):
+                                    record[key] = None
+
+                        unflattened_issues = unflatten_issue_data(records, issue_attribute_definitions)
+
+                        if st.button("Issuesを更新"):
+                            for issue_id, patch_data in unflattened_issues.items():
+                                # None値を持つキーを削除
+                                patch_data = {k: v for k, v in patch_data.items() if v is not None}
+                                patch_issues(access_token=st.session_state.token, project_id=project_id_issue, issue_id=issue_id, data=patch_data)
+                            st.success("Issuesを更新しました！")
+                    except Exception as e:
+                        st.error(f"ファイルの読み込み中にエラーが発生しました: {str(e)}")
+                else:
+                    st.markdown('**:red[Upload File(.xlsx/.xls/.csv)]**')
             
-            unflattend_issues = unflatten_issue_data(edited_df, issue_attribute_definitions)
+        elif selected == "User Config":
+            st.warning("未実装(240822時点)")
+            tab1, tab2, tab3 = st.tabs(["Cat", "Dog", "Owl"])
 
-            # パッチ処理
-            if st.button("Update Issues"):
-                try:
-                    for issue_id, patch_data in unflattend_issues.items():
-                        patch_issues(access_token=st.session_state.token, project_id=project_id_issue, issue_id=issue_id, data=patch_data)
-                    st.success("Issuesを更新しました！")
-                except Exception as e:
-                    st.error(f"Error updating issue {issue_id}: {str(e)}")
+            with tab1:
+                st.header("A cat")
+                st.image("https://static.streamlit.io/examples/cat.jpg", width=200)
+            with tab2:
+                st.header("A dog")
+                st.image("https://static.streamlit.io/examples/dog.jpg", width=200)
+            with tab3:
+                st.header("An owl")
+                st.image("https://static.streamlit.io/examples/owl.jpg", width=200)
+            st.write("User Config")
+            ### ↓↓↓User登録を実装していく↓↓↓ ###
+
+            ### ↑↑↑User登録を実装していく↑↑↑ ###
 
 if __name__ == '__main__':
     main()
