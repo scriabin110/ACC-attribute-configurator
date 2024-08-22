@@ -22,6 +22,10 @@ def initialize_session_state():
         st.session_state.current_folder_id = None
     if 'urns' not in st.session_state:
         st.session_state.urns = None
+    if 'update_mode' not in st.session_state:
+        st.session_state.update_mode = None
+    if 'issue_types' not in st.session_state:
+        st.session_state.issue_types = None
 
 def main():
     st.set_page_config(**const.SET_PAGE_CONFIG)
@@ -44,7 +48,7 @@ def main():
         auth_code = get_auth_code()
         if auth_code:
             st.session_state.token = get_access_token(auth_code)
-            st.success("認証が成功しました！")
+            # st.success("認証が成功しました！")
         else:
             st.error("認証コードを入力してください。")
             return
@@ -108,10 +112,14 @@ def main():
             st.session_state.urns = get_document_id(st.session_state.token, project_id, folder_id)
 
         if selected == "Document Management":
-            tab1, tab2 = st.tabs(["🦾 Manual Update", "📈 Custom Attributes"])
+            st.session_state.update_mode = st.radio(
+                "Mode:  ", 
+                ["🦾 Manual Update", "📈 ***Excel Batch Update***"], 
+                captions = ["Directly update issues", "Batch update issues via Excel file"],
+                horizontal=True)
             
             # "🦾 Manual Update"
-            with tab1:
+            if st.session_state.update_mode == "🦾 Manual Update": 
                 try:
                     if st.session_state.urns:
                         json_data = get_custom_Attribute(st.session_state.token, project_id, st.session_state.urns)['results']
@@ -150,7 +158,7 @@ def main():
                     st.error(f"エラーが発生しました: {str(e)}")
             
             #"📈 Custom Attributes"
-            with tab2:
+            if st.session_state.update_mode == "📈 ***Excel Batch Update***": 
                 uploaded_file = st.file_uploader("Batch Update", type=["csv", "xlsx", "xls"])
                 if uploaded_file is not None:
                     try:
@@ -181,13 +189,16 @@ def main():
                     st.markdown('**:red[Upload File(.xlsx/.xls/.csv)]**')
         
         elif selected == "Issue Config":
-            tab1, tab2 = st.tabs(["🦾 Manual Update", "📈 Custom Attributes"])
+            st.session_state.update_mode = st.radio(
+                "Mode:  ", 
+                ["🦾 Manual Update", "📈 ***Excel Batch Update***"], 
+                captions = ["Directly update issues", "Batch update issues via Excel file"],
+                horizontal=True)
             
-            # st.write(project_id)
             project_id_issue = project_id.split(".")[1]
             issue_types = get_issue_types(st.session_state.token, project_id_issue)
-            issue_type_name = st.selectbox("Select Issue Type", issue_types, index=len(issue_types)-1)  #デフォルトでInformation Control Sheetを取得
-            issue_type_id = issue_types[issue_type_name]
+            st.session_state.issue_types = st.selectbox("Select Issue Type", issue_types, index=len(issue_types)-1)  #デフォルトでInformation Control Sheetを取得
+            issue_type_id = issue_types[st.session_state.issue_types]
             st.write("-"*50)
 
             issues = get_issues(st.session_state.token, project_id_issue, issue_type_id=issue_type_id)["results"]
@@ -195,7 +206,7 @@ def main():
             issue_attribute_definitions = get_issue_attribute_definitions(st.session_state.token, project_id_issue)
 
             # "🦾 Manual Update"
-            with tab1:
+            if st.session_state.update_mode == "🦾 Manual Update":
                 n_patch_issue = len(issues)  # ここでissue数を指定
                 issues = issues[:n_patch_issue]  # issuesリストから指定数だけ取得
 
@@ -233,14 +244,15 @@ def main():
                 # パッチ処理
                 if st.button("Update Issues"):
                     try:
-                        for issue_id, patch_data in unflattend_issues.items():
-                            patch_issues(access_token=st.session_state.token, project_id=project_id_issue, issue_id=issue_id, data=patch_data)
+                        with st.spinner('Updating issues...'):
+                            for issue_id, patch_data in unflattend_issues.items():
+                                patch_issues(access_token=st.session_state.token, project_id=project_id_issue, issue_id=issue_id, data=patch_data)
                         st.success("Issuesを更新しました！")
                     except Exception as e:
                         st.error(f"Error updating issue {issue_id}: {str(e)}")
 
             # "📈 Custom Attributes"
-            with tab2:
+            if st.session_state.update_mode == "📈 ***Excel Batch Update***":
                 uploaded_file = st.file_uploader("Batch Update", type=["csv", "xlsx", "xls"])
                 if uploaded_file is not None:
                     try:
@@ -268,10 +280,11 @@ def main():
                         unflattened_issues = unflatten_issue_data(records, issue_attribute_definitions)
 
                         if st.button("Issuesを更新"):
-                            for issue_id, patch_data in unflattened_issues.items():
-                                # None値を持つキーを削除
-                                patch_data = {k: v for k, v in patch_data.items() if v is not None}
-                                patch_issues(access_token=st.session_state.token, project_id=project_id_issue, issue_id=issue_id, data=patch_data)
+                            with st.spinner('Updating issues...'):
+                                for issue_id, patch_data in unflattened_issues.items():
+                                    # None値を持つキーを削除
+                                    patch_data = {k: v for k, v in patch_data.items() if v is not None}
+                                    patch_issues(access_token=st.session_state.token, project_id=project_id_issue, issue_id=issue_id, data=patch_data)
                             st.success("Issuesを更新しました！")
                     except Exception as e:
                         st.error(f"ファイルの読み込み中にエラーが発生しました: {str(e)}")

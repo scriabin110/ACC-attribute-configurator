@@ -113,10 +113,15 @@ def unflatten_issue_data(flattened_data, issue_attribute_definitions):
                 attr_value = flat_issue[attr_title]
                 # リスト型の属性の場合、IDを探す
                 if attr_def['dataType'] == 'list' and attr_def['metadata'].get('list'):
+                    value_found = False
                     for option in attr_def['metadata']['list']['options']:
                         if option['value'] == attr_value:
                             attr_value = option['id']
+                            value_found = True
                             break
+                    if attr_value is not None and not value_found:
+                        st.warning(f"警告: 属性 '{attr_title}' に無効な値 '{attr_value}' が指定されています。")
+                        continue  # この属性をスキップ
                 custom_attr = {
                     'attributeDefinitionId': attr_def['id'],
                     'value': attr_value
