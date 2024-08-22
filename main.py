@@ -305,8 +305,11 @@ def main():
             company_id = get_company_id(token, st.session_state.current_project_id_issue, st.session_state.account_id)
             st.write(company_id)
 
+            st.subheader("Project Users")
             project_users = get_project_users(st.session_state.token, st.session_state.current_project_id_issue)
             st.write(project_users['results'][0])
+            df = pd.json_normalize(project_users['results'][0])
+            st.data_editor(df, num_rows="dynamic")
 
             data = transform_user_data(project_users)
             st.subheader("Project Users(update)")
