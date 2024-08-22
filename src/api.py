@@ -220,4 +220,84 @@ def patch_issues(access_token, project_id, issue_id, data):
     if response.status_code == 200:
         return response.json()
     else:
-        raise Exception(f"attribute_mappings取得エラー: {response.text}")    
+        raise Exception(f"attribute_mappings取得エラー: {response.text}")
+
+def get_project_users(access_token, project_id):
+    url = f"https://developer.api.autodesk.com/construction/admin/v1/projects/{project_id}/users"
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"users取得エラー: {response.text}")
+
+def post_project_users(token, project_id, data):
+    project_id = project_id
+    url = f'https://developer.api.autodesk.com/construction/admin/v2/projects/{project_id}/users:import'
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json'
+        }
+    # data = list(data)
+    response = requests.post(url, headers=headers, json=data)
+    if response.status_code == 202:
+        return response.json()
+    else:
+        raise Exception(f"user登録エラー: {response.text}")
+
+#project user用のデータ変換
+def transform_user_data(input_data):
+    def clean_name(name):
+        name = name.replace('_', ' ')
+        name = name.strip()
+        name = ' '.join(name.split())
+        return name
+
+    transformed_data = {"users": []}
+    
+    for user in input_data['results']:
+        transformed_user = {
+            "companyId": user['companyId'],
+            "roleIds": user.get('roleIds', []),
+            "products": []
+        }
+        
+        # emailとuserIdのどちらか一方のみを含める
+        if 'email' in user:
+            transformed_user['email'] = user['email']
+        elif 'id' in user:
+            transformed_user['userId'] = user['id']
+        
+        # 名前フィールドを追加（存在する場合）
+        if 'firstName' in user:
+            transformed_user['firstName'] = clean_name(user['firstName'])
+        if 'lastName' in user:
+            transformed_user['lastName'] = clean_name(user['lastName'])
+        
+        # 製品アクセス権限を変換
+        for product in user.get('products', []):
+            if isinstance(product, dict) and 'key' in product and 'access' in product:
+                transformed_user['products'].append({
+                    "key": product['key'],
+                    "access": product['access']
+                })
+        
+        # 空の文字列や空のリストを削除
+        transformed_user = {k: v for k, v in transformed_user.items() if v not in ['', [], None]}
+        
+        transformed_data['users'].append(transformed_user)
+    
+    return transformed_data
+
+def get_company_id(access_token, project_id, account_id):
+    url = f"https://developer.api.autodesk.com/hq/v1/accounts/{account_id}/projects/{project_id}/companies"
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"company_id取得エラー: {response.text}")

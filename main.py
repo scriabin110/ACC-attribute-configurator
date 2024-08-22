@@ -18,6 +18,8 @@ def initialize_session_state():
         st.session_state.top_folders = None
     if 'current_project_id' not in st.session_state:
         st.session_state.current_project_id = None
+    if 'current_project_id_issue' not in st.session_state:
+        st.session_state.current_project_id_issue = None
     if 'current_folder_id' not in st.session_state:
         st.session_state.current_folder_id = None
     if 'urns' not in st.session_state:
@@ -26,6 +28,8 @@ def initialize_session_state():
         st.session_state.update_mode = None
     if 'issue_types' not in st.session_state:
         st.session_state.issue_types = None
+    if 'account_id' not in st.session_state:
+        st.session_state.account_id = None
 
 def main():
     st.set_page_config(**const.SET_PAGE_CONFIG)
@@ -55,6 +59,7 @@ def main():
 
     if st.session_state.token:
         hub_id = 'b.21cd4449-77cc-4f14-8dd8-597a5dfef551'
+        st.session_state.account_id = hub_id.split(".")[1]
 
         if not st.session_state.project_list:
             with st.spinner("プロジェクトリストを取得中..."):
@@ -66,6 +71,7 @@ def main():
         st.sidebar.header("Project")
         project_name = st.sidebar.selectbox("Select Project", list(st.session_state.project_dict.keys()))
         project_id = st.session_state.project_dict[project_name]
+        st.session_state.current_project_id_issue = project_id.split(".")[1]
 
         if project_id != st.session_state.current_project_id:
             st.session_state.current_project_id = project_id
@@ -195,15 +201,15 @@ def main():
                 captions = ["Directly update issues", "Batch update issues via Excel file"],
                 horizontal=True)
             
-            project_id_issue = project_id.split(".")[1]
-            issue_types = get_issue_types(st.session_state.token, project_id_issue)
+            # project_id_issue = project_id.split(".")[1]
+            issue_types = get_issue_types(st.session_state.token, st.session_state.current_project_id_issue)
             st.session_state.issue_types = st.selectbox("Select Issue Type", issue_types, index=len(issue_types)-1)  #デフォルトでInformation Control Sheetを取得
             issue_type_id = issue_types[st.session_state.issue_types]
             st.write("-"*50)
 
-            issues = get_issues(st.session_state.token, project_id_issue, issue_type_id=issue_type_id)["results"]
+            issues = get_issues(st.session_state.token, st.session_state.current_project_id_issue, issue_type_id=issue_type_id)["results"]
 
-            issue_attribute_definitions = get_issue_attribute_definitions(st.session_state.token, project_id_issue)
+            issue_attribute_definitions = get_issue_attribute_definitions(st.session_state.token, st.session_state.current_project_id_issue)
 
             # "🦾 Manual Update"
             if st.session_state.update_mode == "🦾 Manual Update":
@@ -246,7 +252,7 @@ def main():
                     try:
                         with st.spinner('Updating issues...'):
                             for issue_id, patch_data in unflattend_issues.items():
-                                patch_issues(access_token=st.session_state.token, project_id=project_id_issue, issue_id=issue_id, data=patch_data)
+                                patch_issues(access_token=st.session_state.token, project_id=st.session_state.current_project_id_issue, issue_id=issue_id, data=patch_data)
                         st.success("Issuesを更新しました！")
                     except Exception as e:
                         st.error(f"Error updating issue {issue_id}: {str(e)}")
@@ -284,7 +290,7 @@ def main():
                                 for issue_id, patch_data in unflattened_issues.items():
                                     # None値を持つキーを削除
                                     patch_data = {k: v for k, v in patch_data.items() if v is not None}
-                                    patch_issues(access_token=st.session_state.token, project_id=project_id_issue, issue_id=issue_id, data=patch_data)
+                                    patch_issues(access_token=st.session_state.token, project_id=st.session_state.current_project_id_issue, issue_id=issue_id, data=patch_data)
                             st.success("Issuesを更新しました！")
                     except Exception as e:
                         st.error(f"ファイルの読み込み中にエラーが発生しました: {str(e)}")
@@ -292,20 +298,25 @@ def main():
                     st.markdown('**:red[Upload File(.xlsx/.xls/.csv)]**')
             
         elif selected == "User Config":
-            st.warning("未実装(240822時点)")
-            tab1, tab2, tab3 = st.tabs(["Cat", "Dog", "Owl"])
+            st.warning("実装中(240822時点)")
 
-            with tab1:
-                st.header("A cat")
-                st.image("https://static.streamlit.io/examples/cat.jpg", width=200)
-            with tab2:
-                st.header("A dog")
-                st.image("https://static.streamlit.io/examples/dog.jpg", width=200)
-            with tab3:
-                st.header("An owl")
-                st.image("https://static.streamlit.io/examples/owl.jpg", width=200)
-            st.write("User Config")
             ### ↓↓↓User登録を実装していく↓↓↓ ###
+            token = get_2_legged_token()
+            company_id = get_company_id(token, st.session_state.current_project_id_issue, st.session_state.account_id)
+            st.write(company_id)
+
+            project_users = get_project_users(st.session_state.token, st.session_state.current_project_id_issue)
+            st.write(project_users['results'][0])
+
+            data = transform_user_data(project_users)
+            st.subheader("Project Users(update)")
+            st.write(data)
+            if st.button("usersを更新"):
+                post_project_users(st.session_state.token, st.session_state.current_project_id_issue, data)
+                st.success("usersを更新しました！")
+
+            
+
 
             ### ↑↑↑User登録を実装していく↑↑↑ ###
 
