@@ -303,20 +303,63 @@ def main():
             ### ↓↓↓User登録を実装していく↓↓↓ ###
             token = get_2_legged_token()
             company_id = get_company_id(token, st.session_state.current_project_id_issue, st.session_state.account_id)
-            st.write(company_id)
+            st.header("company_id")
+            company_dict = {}
+            for i in company_id:
+                company_dict[i["name"]] = i["id"]
+            st.write(company_dict)
+
+            # st.subheader("Project Users")
+            project_users = get_project_users(st.session_state.token, st.session_state.current_project_id_issue)
+            project_users_dict = {}
+            for user in project_users['results']:
+                project_users_dict[user['id']] = user['name']
+            st.subheader("[Dict] Project Users")
+            st.write(project_users_dict)
+            
 
             st.subheader("Project Users")
-            project_users = get_project_users(st.session_state.token, st.session_state.current_project_id_issue)
-            st.write(project_users['results'][0])
-            df = pd.json_normalize(project_users['results'][0])
-            st.data_editor(df, num_rows="dynamic")
+            dict_list = project_users["results"]
+            st.write(dict_list)
 
-            data = transform_user_data(project_users)
-            st.subheader("Project Users(update)")
+            new_dict_list = []
+            for i in dict_list:
+                new_dict = {}
+                for key, value in i.items():
+                    if key in ["companyId", "roleIds", "email", 'firstName', 'lastName', 'products']:
+                        new_dict[key] = value
+                new_dict_list.append(new_dict)
+
+            dict_list = new_dict_list
+            st.subheader("[Table] Project Users")
+            # df = pd.DataFrame(project_users["results"])
+            df_editable = st.data_editor(dict_list, num_rows="dynamic")
+            st.write(type(df_editable))
+            # df = pd.json_normalize(project_users['results'][0])
+            # st.data_editor(df, num_rows="dynamic", column_config={
+            # "country": st.column_config.SelectboxColumn(
+            #     "country",
+            #     help="Select your country",
+            #     width="medium",
+            #     options=["japan", "america", "china"],
+            #     required=True,
+            # )})
+
+            data = transform_user_data(df_editable)
+            st.subheader("Post Project Users(update)")
             st.write(data)
-            if st.button("usersを更新"):
+            if st.button("Post Project Users"):
                 post_project_users(st.session_state.token, st.session_state.current_project_id_issue, data)
                 st.success("usersを更新しました！")
+            
+            # st.subheader("Patch Project Users(update)")
+            # if st.button("Patch Project Users"):
+
+
+            
+
+            
+
 
             
 
