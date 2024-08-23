@@ -326,14 +326,25 @@ def main():
             for i in dict_list:
                 new_dict = {}
                 for key, value in i.items():
-                    if key in ["companyId", "roleIds", "email", 'firstName', 'lastName', 'products']:
+                    if key in ["roleIds", "email", 'firstName', 'lastName', 'products']:
                         new_dict[key] = value
+                    elif key == "companyId":
+                        new_dict['companyName'] = get_keys_from_value(company_dict, value)[0]  ###ここが絶対エラーになる！！
                 new_dict_list.append(new_dict)
 
             dict_list = new_dict_list
+            st.write(dict_list)
             st.subheader("[Table] Project Users")
             # df = pd.DataFrame(project_users["results"])
-            df_editable = st.data_editor(dict_list, num_rows="dynamic")
+            df_editable = st.data_editor(dict_list, num_rows="dynamic", column_config={
+            "companyName": st.column_config.SelectboxColumn(
+                "companyName",
+                help="Select your company",
+                width="medium",
+                options=list(company_dict.keys()),
+                required=True,
+            )}
+            )
             st.write(type(df_editable))
             # df = pd.json_normalize(project_users['results'][0])
             # st.data_editor(df, num_rows="dynamic", column_config={
@@ -345,7 +356,7 @@ def main():
             #     required=True,
             # )})
 
-            data = transform_user_data(df_editable)
+            data = transform_user_data(df_editable, company_dict)
             st.subheader("Post Project Users(update)")
             st.write(data)
             if st.button("Post Project Users"):

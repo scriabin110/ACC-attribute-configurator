@@ -247,7 +247,7 @@ def post_project_users(token, project_id, data):
         raise Exception(f"user登録エラー: {response.text}")
 
 #project user用のデータ変換
-def transform_user_data(input_data):
+def transform_user_data(input_data, company_dict):
     def clean_name(name):
         name = name.replace('_', ' ')
         name = name.strip()
@@ -258,8 +258,9 @@ def transform_user_data(input_data):
     
     # for user in input_data['results']:
     for user in input_data:
+        print(user)
         transformed_user = {
-            "companyId": user['companyId'],
+            "companyId": company_dict[user['companyName']],
             "roleIds": user.get('roleIds', []),
             "products": []
         }

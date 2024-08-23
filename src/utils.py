@@ -136,3 +136,6 @@ def unflatten_issue_data(flattened_data, issue_attribute_definitions):
         unflattened_issues[issue_id] = unflattened_issue
     
     return unflattened_issues
+
+def get_keys_from_value(d, val):
+    return [k for k, v in d.items() if v == val]
