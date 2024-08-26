@@ -335,14 +335,20 @@ def main():
                             role_dict[value] = i["id"]
             st.subheader("[Dict] Role")
             st.write(role_dict)
-            
+
+            #4. product_list (product一覧)
+            product_list = []
+            for i in dict_list[0]["products"]:
+                product_list.append(i["key"])
+            st.subheader("[List] Product")
+            st.write(product_list)
 
             # テーブル表示用にdictを整形
             new_dict_list = []
             for i in dict_list:
                 new_dict = {}
                 for key, value in i.items():
-                    if key in ["email", 'firstName', 'lastName', 'products']:
+                    if key in ["email", 'firstName', 'lastName']:
                         new_dict[key] = value
                     elif key in ["companyId"]:
                         new_dict['companyName'] = get_keys_from_value(company_dict, value)[0]
@@ -352,28 +358,43 @@ def main():
                             new_dict["roleName"] = [j["name"] for j in value][0]  #いつか複数roleに対応できるようになるかもなので、紛らわしい記法にしている
                         else:
                             new_dict["roleName"] = None
+                    elif key in ["products"]:
+                        for j in value:
+                            new_dict[j["key"]] = j["access"]
                 new_dict_list.append(new_dict)
 
             dict_list = new_dict_list
             st.write(dict_list)
 
-            st.subheader("[Table] Project Users")
-            # df = pd.DataFrame(project_users["results"])
-            df_editable = st.data_editor(dict_list, num_rows="dynamic", column_config={
-            "companyName": st.column_config.SelectboxColumn(
-                "companyName",
-                help="Select your company",
-                width="medium",
-                options=list(company_dict.keys()),
-                required=True,
-            ),
-            "roleName": st.column_config.SelectboxColumn(
-                "roleName",
-                help="Describe your Roles",
-                width="medium",
-                options=list(role_dict.keys())   # streamlitの使用上、data_editorではrole
-            )
+            column_config = {
+                "companyName": st.column_config.SelectboxColumn(
+                    "companyName",
+                    help="Select your company",
+                    width="medium",
+                    options=list(company_dict.keys()),
+                    required=True,
+                ),
+                "roleName": st.column_config.SelectboxColumn(
+                    "roleName",
+                    help="Describe your Roles",
+                    width="medium",
+                    options=list(role_dict.keys())
+                )
             }
+
+            # 製品リストに対する SelectboxColumn を追加
+            for product in product_list:
+                column_config[product] = st.column_config.SelectboxColumn(
+                    product,
+                    help=f"Select access for {product}",
+                    width="medium",
+                    options=["none", "member", "administrator"]  # アクセスレベルのオプション
+                )
+
+            df_editable = st.data_editor(
+                dict_list, 
+                num_rows="dynamic", 
+                column_config=column_config
             )
             st.write(type(df_editable))
             # df = pd.json_normalize(project_users['results'][0])
