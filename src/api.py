@@ -247,40 +247,52 @@ def post_project_users(token, project_id, data):
         raise Exception(f"user登録エラー: {response.text}")
 
 #project user用のデータ変換
-def transform_user_data(input_data, company_dict):
+def transform_user_data(input_data, company_dict, role_dict):
     def clean_name(name):
         name = name.replace('_', ' ')
         name = name.strip()
-        name = ' '.join(name.split())
-        return name
+        return ' '.join(name.split())
 
     transformed_data = {"users": []}
-    
-    # for user in input_data['results']:
-    for user in input_data:
-        print(user)
+    errors = []
+
+    for index, user in enumerate(input_data, start=1):
         transformed_user = {
-            "companyId": company_dict[user['companyName']],
-            "roleIds": user.get('roleIds', []),
             "products": []
         }
         
-        # emailとuserIdのどちらか一方のみを含める
-        if 'email' in user:
-            transformed_user['email'] = user['email']
-        elif 'id' in user:
-            transformed_user['userId'] = user['id']
+        # 必須項目のチェック
+        if 'companyName' not in user or not user['companyName']:
+            errors.append(f"User {index}: Empty company name.")
+        else:
+            transformed_user["companyId"] = company_dict.get(user['companyName'])
+            if transformed_user["companyId"] is None:
+                errors.append(f"User {index}: Invalid Company name: {user['companyName']}")
+
+        if 'roleName' not in user or not user['roleName']:
+            errors.append(f"User {index}: Empty role name.")
+        else:
+            transformed_user["roleIds"] = role_dict.get(user['roleName'])
+            if transformed_user["roleIds"] is None:
+                errors.append(f"User {index}: Invalid role name.: {user['roleName']}")
+
+        if 'email' not in user and 'id' not in user:
+            errors.append(f"User {index}: Email address is required.")
+        else:
+            if 'email' in user:
+                transformed_user['email'] = user['email']
+            elif 'id' in user:
+                transformed_user['userId'] = user['id']
         
         # 名前フィールドを追加（存在する場合）
-        if 'firstName' in user and user['firstName'] is not None:
+        if 'firstName' in user and user['firstName']:
             transformed_user['firstName'] = clean_name(user['firstName'])
-        if 'lastName' in user and user['lastName'] is not None:
+        if 'lastName' in user and user['lastName']:
             transformed_user['lastName'] = clean_name(user['lastName'])
         
         # 製品アクセス権限を変換
-        # productsの処理
         products = user.get('products')
-        if products is not None:
+        if products:
             for product in products:
                 if isinstance(product, dict) and 'key' in product and 'access' in product:
                     transformed_user['products'].append({
@@ -292,7 +304,13 @@ def transform_user_data(input_data, company_dict):
         transformed_user = {k: v for k, v in transformed_user.items() if v not in ['', [], None]}
         
         transformed_data['users'].append(transformed_user)
-    
+
+    # エラーがある場合、Streamlitのエラーメッセージを表示
+    if errors:
+        for error in errors:
+            st.error(error)
+        return None  # エラーがある場合はNoneを返す
+
     return transformed_data
 
 def get_company_id(access_token, project_id, account_id):
@@ -330,4 +348,3 @@ def delete_project_users(access_token, project_id, user_id):
         return response.json()
     else:
         raise Exception(f"Project_user削除エラー: {response.text}")
-
