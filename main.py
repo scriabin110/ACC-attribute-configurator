@@ -364,6 +364,7 @@ def main():
                 new_dict_list.append(new_dict)
 
             dict_list = new_dict_list
+            st.subheader("Transform User Data用")
             st.write(dict_list)
 
             column_config = {
@@ -407,7 +408,7 @@ def main():
             #     required=True,
             # )})
 
-            data = transform_user_data(df_editable, company_dict, role_dict)
+            data = transform_user_data(df_editable, company_dict, role_dict, product_list)
             st.subheader("Post Project Users(update)")
             st.write(data)
             if st.button("Post Project Users"):

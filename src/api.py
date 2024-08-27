@@ -247,7 +247,7 @@ def post_project_users(token, project_id, data):
         raise Exception(f"user登録エラー: {response.text}")
 
 #project user用のデータ変換
-def transform_user_data(input_data, company_dict, role_dict):
+def transform_user_data(input_data, company_dict, role_dict, product_list):
     def clean_name(name):
         name = name.replace('_', ' ')
         name = name.strip()
@@ -272,7 +272,7 @@ def transform_user_data(input_data, company_dict, role_dict):
         if 'roleName' not in user or not user['roleName']:
             errors.append(f"User {index}: Empty role name.")
         else:
-            transformed_user["roleIds"] = role_dict.get(user['roleName'])
+            transformed_user["roleIds"] = [role_dict.get(user['roleName'])]  # 取得されるrole・roleIdは1つのみであると仮定
             if transformed_user["roleIds"] is None:
                 errors.append(f"User {index}: Invalid role name.: {user['roleName']}")
 
@@ -291,14 +291,22 @@ def transform_user_data(input_data, company_dict, role_dict):
             transformed_user['lastName'] = clean_name(user['lastName'])
         
         # 製品アクセス権限を変換
-        products = user.get('products')
-        if products:
-            for product in products:
-                if isinstance(product, dict) and 'key' in product and 'access' in product:
-                    transformed_user['products'].append({
-                        "key": product['key'],
-                        "access": product['access']
-                    })
+        for product in product_list:
+            if product in user:
+                transformed_user['products'].append({
+                    "key": product,
+                    "access": user[product]
+                })
+
+
+        # products = user.get('products')
+        # if products:
+        #     for product in products:
+        #         if isinstance(product, dict) and 'key' in product and 'access' in product:
+        #             transformed_user['products'].append({
+        #                 "key": product['key'],
+        #                 "access": product['access']
+        #             })
         
         # 空の文字列や空のリストを削除
         transformed_user = {k: v for k, v in transformed_user.items() if v not in ['', [], None]}
@@ -348,3 +356,16 @@ def delete_project_users(access_token, project_id, user_id):
         return response.json()
     else:
         raise Exception(f"Project_user削除エラー: {response.text}")
+
+def patch_project_users(access_token, project_id):
+    # url = f"https://developer.api.autodesk.com/construction/admin/v1/projects/{project_id}/users"
+    # ここのurlは変更する
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+        # 'Content-Type': 'application/json' #不要なら削除
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"patch_userエラー: {response.text}")
