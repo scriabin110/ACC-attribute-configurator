@@ -6,6 +6,7 @@ from src.utils import *
 import const
 from streamlit_option_menu import option_menu
 import pandas as pd
+from config import ROLE_DICT
 
 def initialize_session_state():
     if 'token' not in st.session_state:
@@ -56,6 +57,8 @@ def main():
         else:
             st.error("認証コードを入力してください。")
             return
+        
+    # ここまで：token取得処理
 
     if st.session_state.token:
         hub_id = 'b.21cd4449-77cc-4f14-8dd8-597a5dfef551'
@@ -116,6 +119,8 @@ def main():
         if folder_id != st.session_state.current_folder_id:
             st.session_state.current_folder_id = folder_id
             st.session_state.urns = get_document_id(st.session_state.token, project_id, folder_id)
+
+    # ここまで：①プロジェクト選択、②フォルダ選択
 
         if selected == "Document Management":
             st.session_state.update_mode = st.radio(
@@ -327,12 +332,13 @@ def main():
             st.write(dict_list)
 
             # 3.role_dict (role一覧)
-            role_dict = {}
-            for i in dict_list:
-                for j in i['roles']:
-                    for key, value in j.items():
-                        if key == "name":
-                            role_dict[value] = i["id"]
+            # role_dict = {}
+            # for i in dict_list:
+            #     for j in i['roles']:
+            #         for key, value in j.items():
+            #             if key == "name":
+            #                 role_dict[value] = i["roles"][0]["id"]
+            role_dict = ROLE_DICT
             st.subheader("[Dict] Role")
             st.write(role_dict)
 
@@ -415,6 +421,19 @@ def main():
                 post_project_users(st.session_state.token, st.session_state.current_project_id_issue, data)
                 st.success("usersを更新しました！")
             
+            # ここ矛盾だらけ
+            data_modified = data["users"][1]
+            deletion_target = ["email", "firstName", "lastName"]
+            for i in deletion_target:
+                del data_modified[i]
+            st.subheader("data modified")
+            st.write(data_modified)
+
+            if st.button("Patch Project Users"):
+                user_id = "2S62W7PEL2RDCEVH"  #伊藤のUser_idを入れたい(テスト用)
+                patch_project_users(st.session_state.token, st.session_state.current_project_id_issue, user_id, data_modified)  #ここらへんまで修正したい
+                st.success("usersを更新しました(Patch Update版)！")
+
             # st.subheader("Patch Project Users(update)")
             # if st.button("Patch Project Users"):
 

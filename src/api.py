@@ -118,22 +118,12 @@ def get_custom_Attribute_Definition(token, project_id, folder_id):
     return response.json()
 
 def update_custom_Attribute(token, project_id, urn, data):
-    # token = get_access_token(auth_code)
-    # hub_id = 'b.21cd4449-77cc-4f14-8dd8-597a5dfef551'
     project_id = project_id
-    # folder_id = 'urn:adsk.wipprod:fs.folder:co.bbBsDQe2QDWHWZMhIMr3PQ'
-    # urn = 'urn:adsk.wipprod:fs.file:vf.3Lqfodg2RB6FYptKDOZ6-Q?version=1'
     url = f'https://developer.api.autodesk.com/bim360/docs/v1/projects/{project_id}/versions/{urllib.parse.quote(urn, safe="")}/custom-attributes:batch-update'
     headers = {
         'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json'
         }
-    # data = [
-    #     {
-    #         "id": 5064287,
-    #         "value": "ほげほげ"
-    #     }
-    # ]
     data = list(data)
     response = requests.post(url, headers=headers, json=data)
     data = response.json()
@@ -233,18 +223,21 @@ def get_project_users(access_token, project_id):
     else:
         raise Exception(f"users取得エラー: {response.text}")
 
+
+
 def post_project_users(token, project_id, data):
-    url = f'https://developer.api.autodesk.com/construction/admin/v2/projects/{project_id}/users:import'
+    # url = f'https://developer.api.autodesk.com/construction/admin/v2/projects/{project_id}/users:import'
+    url = f"https://developer.api.autodesk.com/construction/admin/v2/projects/{project_id}/users:import"
     headers = {
         'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json'
         }
-    # data = list(data)
     response = requests.post(url, headers=headers, json=data)
     if response.status_code == 202:
         return response.json()
     else:
         raise Exception(f"user登録エラー: {response.text}")
+    
 
 #project user用のデータ変換
 def transform_user_data(input_data, company_dict, role_dict, product_list):
@@ -357,15 +350,18 @@ def delete_project_users(access_token, project_id, user_id):
     else:
         raise Exception(f"Project_user削除エラー: {response.text}")
 
-def patch_project_users(access_token, project_id):
+def patch_project_users(access_token, project_id, user_id, user_data):
     # url = f"https://developer.api.autodesk.com/construction/admin/v1/projects/{project_id}/users"
+    url = f"https://developer.api.autodesk.com/construction/admin/v1/projects/{project_id}/users/{user_id}"
     # ここのurlは変更する
     headers = {
-        'Authorization': f'Bearer {access_token}'
-        # 'Content-Type': 'application/json' #不要なら削除
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json'
     }
-    response = requests.get(url, headers=headers)
+    response = requests.patch(url, headers=headers, json=user_data)
+    # response = requests.get(url, headers=headers)
     if response.status_code == 200:
         return response.json()
     else:
         raise Exception(f"patch_userエラー: {response.text}")
+
