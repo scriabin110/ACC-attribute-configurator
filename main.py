@@ -159,7 +159,7 @@ def print_attributes(attributes, item_type, item_id):
             print(f"フォルダではありません。")
         print("-" * 50)
 
-def get_custom_Attribute(token):
+def get_bim360_version(token):
     # token = get_access_token(auth_code)
     hub_id = 'b.21cd4449-77cc-4f14-8dd8-597a5dfef551'
     project_id = 'b.1fd68d4e-de62-4bc3-a909-8b0baeec77e4'
@@ -190,7 +190,7 @@ if __name__ == '__main__':
                 document_id = get_document_id(token, project_id, item['id']) if item['type'] == 'folders' else None
                 print(f'document_id: {document_id}')
                 print_attributes(attributes, item['type'], item['id'])
-            print(json.dumps(get_custom_Attribute(token), indent=2, ensure_ascii=False))
+                print(get_bim360_version(token))
         else:
             print("認証コードの取得に失敗しました。プログラムを終了します。")
     except Exception as e:
