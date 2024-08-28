@@ -365,3 +365,14 @@ def patch_project_users(access_token, project_id, user_id, user_data):
     else:
         raise Exception(f"patch_userエラー: {response.text}")
 
+def get_rfis(access_token, container_id):
+# def get_rfis(access_token):
+    url = f"https://developer.api.autodesk.com/bim360/rfis/v2/containers/{container_id}/rfis"
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"rfis取得エラー: {response.json()}")
