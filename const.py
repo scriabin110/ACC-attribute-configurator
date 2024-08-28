@@ -8,7 +8,8 @@ SET_PAGE_CONFIG = {
 
 OPTION_MENU_CONFIG = {
     "menu_title": "ACC Explorer",
-    "options": ["Document Management", "Issue Config", "RFIs Config", "User Config"],
+    "options": ["Document Management", "Issue Config", "RFIs Config"],
+    # "options": ["Document Management", "Issue Config", "RFIs Config", "User Config"],
     "icons": ["bi-chat-dots", "bi-cloud-arrow-up", "bi-book"],
     "menu_icon": "bi-search",
     "default_index": 0,

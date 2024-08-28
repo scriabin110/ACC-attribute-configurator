@@ -373,6 +373,29 @@ def get_rfis(access_token, container_id):
     }
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
-        return response.json()
+        return response.json()["results"]
     else:
         raise Exception(f"rfis取得エラー: {response.json()}")
+
+def post_rfis(token, container_id, data):
+    url = f" https://developer.api.autodesk.com/bim360/rfis/v2/containers/{container_id}/rfis"
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json'
+        }
+    response = requests.post(url, headers=headers, json=data)
+    if response.status_code == 201:
+        return response.json()
+    else:
+        raise Exception(f"user登録エラー: {response.text}")
+
+def get_rfi_per_id(access_token, container_id, rfi_id):
+    url = f" https://developer.api.autodesk.com/bim360/rfis/v2/containers/{container_id}/rfis/{rfi_id}"
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"RFI(idごと)取得エラー: {response.text}")
