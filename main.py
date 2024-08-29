@@ -308,18 +308,21 @@ def main():
             st.write(rfis)
 
             st.subheader("RFIs_per_id")
-            rfi_id = rfis[-2]["id"]
+            rfi_id = rfis[3]["id"]
             rfi_per_id = get_rfi_per_id(st.session_state.token, st.session_state.current_project_id_issue, rfi_id)
             st.write(rfi_per_id)
 
 
             custom_attributes = rfi_per_id["customAttributes"]
+            st.subheader("Custom Attributes")
+            st.write(custom_attributes)
 
             # 残したいattribute・パラメータの類
             # 1. RFIs table view
                 # status / customIdentifier / title / reviewers / coReivewers / dueDate / rfiTypeId / lbsIds / location / costImpact / scheduleImpact / - / priority / discipline / reference / createdBy / commentsCount / createdAt
             # 2. General Information (#1には含まれないもの)
                 # 
+            
 
             # 詳細    
                 # reviewersはACC上の"Ball in court"に相当
@@ -327,6 +330,9 @@ def main():
                 # locationはACC上の"Location Details"に相当 (ややこしすぎ)
                 # ACC上の "References" に当てはまる項目は見当たらず。
                 # referenceはACC上の"External Id"に相当
+                # Managerにのみ見える
+                # Information Control Sheetの "To"は、 RFIsデフォルトの"CreatedBy" では対応不可
+                # "Discipline" は消すべき(?)
             
             # 開発メモ
                 # customAttributeのDefinitionはgetできないので、あらかじめ決めてどこかに保存する必要あり
