@@ -303,21 +303,52 @@ def main():
                     st.markdown('**:red[Upload File(.xlsx/.xls/.csv)]**')
 
         elif selected == "RFIs Config":
+            # 残したいattribute・パラメータの類
+            # 結論    ACC(API内の名前)：データ型の形でmemo
+                # - Status：string
+                # - ID：string
+                # - Title：string
+                # - Ball in court(reviewer)：list>dict object
+                # - Due Date：string → "2024-08-30T00:00:00.000Z"
+                # - Location(lbsIds)：list>dict object
+                # - Location Details(location)：dict object
+                # - Reference：→ 一旦削除
+                # - External ID(reference)：string
+
+            
             rfis = get_rfis(st.session_state.token, st.session_state.current_project_id_issue)
+            rfi_id = rfis[-2]["id"]
+            rfi_per_id = get_rfi_per_id(st.session_state.token, st.session_state.current_project_id_issue, rfi_id)
+            locations_att = get_locations_att(st.session_state.token, st.session_state.current_project_id_issue, rfi_id)
+            custom_attributes = rfi_per_id["customAttributes"]
+            location_node = get_locations_node(st.session_state.token, st.session_state.current_project_id_issue)
+
+            filtered_rfis = filter_json_data(rfis)
+            rfis_for_post = transform_to_bim360_format(filtered_rfis)
+            if st.button("Post RFIs"):
+                post_rfis(st.session_state.token, st.session_state.current_project_id_issue, rfis_for_post[0])
+                st.success("RFIsを更新しました！")
+
+            st.write(filtered_rfis)
+
             st.subheader("RFIs")
             st.write(rfis)
 
             st.subheader("RFIs_per_id")
-            rfi_id = rfis[3]["id"]
-            rfi_per_id = get_rfi_per_id(st.session_state.token, st.session_state.current_project_id_issue, rfi_id)
+
             st.write(rfi_per_id)
 
+            st.subheader("attachment")
+            st.write(locations_att)
 
-            custom_attributes = rfi_per_id["customAttributes"]
             st.subheader("Custom Attributes")
             st.write(custom_attributes)
 
-            # 残したいattribute・パラメータの類
+            
+            st.subheader("Location Node")
+            st.write(location_node)
+
+
             # 1. RFIs table view
                 # status / customIdentifier / title / reviewers / coReivewers / dueDate / rfiTypeId / lbsIds / location / costImpact / scheduleImpact / - / priority / discipline / reference / createdBy / commentsCount / createdAt
             # 2. General Information (#1には含まれないもの)
@@ -336,6 +367,9 @@ def main():
             
             # 開発メモ
                 # customAttributeのDefinitionはgetできないので、あらかじめ決めてどこかに保存する必要あり
+                # customAttributesはPOST / PATCH不可
+
+
 
 
         # elif selected == "User Config":

@@ -399,3 +399,25 @@ def get_rfi_per_id(access_token, container_id, rfi_id):
         return response.json()
     else:
         raise Exception(f"RFI(idごと)取得エラー: {response.text}")
+
+def get_locations_node(access_token, project_id, tree_id="default"):
+    url = f"https://developer.api.autodesk.com/construction/locations/v2/projects/{project_id}/trees/{tree_id}/nodes"
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"locations_node取得エラー: {response.text}")
+    
+def get_locations_att(access_token, container_id, rfi_id):
+    url = f" https://developer.api.autodesk.com/bim360/rfis/v2/containers/{container_id}/rfis/{rfi_id}/attachments"
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"locations_node取得エラー: {response.text}")
