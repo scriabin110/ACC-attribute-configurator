@@ -47,41 +47,6 @@ def flatten_issue_data(issues_dict, issue_attribute_definitions):
     
     return flattened_data
 
-# def unflatten_issue_data(flattened_data, issue_attribute_definitions):
-#     unflattened_issues = {}
-    
-#     for flat_issue in flattened_data:
-#         issue_id = flat_issue.pop('id')
-#         unflattened_issue = flat_issue.copy()
-        
-#         # カスタム属性を再構築
-#         custom_attributes = []
-#         for attr_def in issue_attribute_definitions['results']:
-#             attr_title = attr_def['title']
-#             if attr_title in unflattened_issue:
-#                 custom_attr = {
-#                     'attributeDefinitionId': attr_def['id'],
-#                     'value': unflattened_issue.pop(attr_title)
-#                 }
-#                 custom_attributes.append(custom_attr)
-        
-#         unflattened_issue['customAttributes'] = custom_attributes
-        
-#         # 不要なフィールドを削除
-#         for key in list(unflattened_issue.keys()):
-#             if key not in [
-#                 "title", "description", "issueSubtypeId", "status", "assignedTo",
-#                 "assignedToType", "dueDate", "locationId", "locationDetails",
-#                 "rootCauseId", "customAttributes", "snapshotUrn", "startDate",
-#                 "published", "watchers", "gpsCoordinates"
-#             ]:
-#                 del unflattened_issue[key]
-        
-#         unflattened_issues[issue_id] = unflattened_issue
-    
-#     return unflattened_issues
-
-
 def unflatten_issue_data(flattened_data, issue_attribute_definitions):
     unflattened_issues = {}
     
@@ -173,45 +138,45 @@ def filter_json_data(json_data):
 
 
 def transform_to_bim360_format(filtered_data):
-    if not filtered_data:
-        return None
+    bim360_data = []
     
-    # 最初の項目のみを変換
-    item = filtered_data[0]
-    
-    bim360_item = {
-        "id": item.get("id", ""),
-        "status": item.get("status", "open"),
-        "title": item.get("title", ""),
-        "question": "",
-        "suggestedAnswer": "",
-        "assignedTo": item.get("reviewerId", ""),
-        "linkedDocument": "",
-        "linkedDocumentVersion": None,
-        "location": {
-            "description": item.get("location", "")
-        },
-        "dueDate": item.get("dueDate"),
-        "costImpact": "",
-        "scheduleImpact": "",
-        "priority": "",
-        "discipline": [],
-        "category": [],
-        "reference": item.get("reference", ""),
-        "sheetMetadata": {},
-        "coReviewers": [],
-        "distributionList": [],
-        "pushpinAttributes": {
-            "externalId": "",
-            "location": {},
-            "objectId": "",
-            "type": "TwoDRasterPushpin",
-            "viewerState": {},
-            "attributesVersion": 1
+    for item in filtered_data:
+        bim360_item = {
+            "id": item.get("id", ""),
+            "status": item.get("status", "open"),
+            "title": item.get("title", ""),
+            "question": "",  # 元のデータにはこのフィールドがないため、空文字列を設定
+            "suggestedAnswer": "",  # 元のデータにはこのフィールドがないため、空文字列を設定
+            "assignedTo": item.get("reviewerId", ""),
+            "linkedDocument": "",  # 元のデータにはこのフィールドがないため、空文字列を設定
+            "linkedDocumentVersion": None,  # 元のデータにはこのフィールドがないため、Noneを設定
+            "location": {
+                "description": item.get("location", "")
+            },
+            "dueDate": item.get("dueDate"),
+            "costImpact": "",  # 元のデータにはこのフィールドがないため、空文字列を設定
+            "scheduleImpact": "",  # 元のデータにはこのフィールドがないため、空文字列を設定
+            "priority": "",  # 元のデータにはこのフィールドがないため、空文字列を設定
+            "discipline": [],  # 元のデータにはこのフィールドがないため、空のリストを設定
+            "category": [],  # 元のデータにはこのフィールドがないため、空のリストを設定
+            "reference": item.get("reference", ""),
+            "sheetMetadata": {},  # 元のデータにはこのフィールドがないため、空の辞書を設定
+            "coReviewers": [],  # 元のデータにはこのフィールドがないため、空のリストを設定
+            "distributionList": [],  # 元のデータにはこのフィールドがないため、空のリストを設定
+            "pushpinAttributes": {
+                "externalId": "",
+                "location": {},
+                "objectId": "",
+                "type": "TwoDRasterPushpin",
+                "viewerState": {},
+                "attributesVersion": 1
+            }
         }
-    }
+        
+        # lbsIdsフィールドがある場合、それを追加
+        if "lbsIds" in item:
+            bim360_item["lbsIds"] = item["lbsIds"]
+        
+        bim360_data.append(bim360_item)
     
-    if "lbsIds" in item:
-        bim360_item["lbsIds"] = item["lbsIds"]
-    
-    return bim360_item
+    return bim360_data
