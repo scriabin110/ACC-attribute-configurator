@@ -123,3 +123,79 @@ def validate_data(record, attribute_definitions):
                 elif attr_def['type'] == 'number' and not isinstance(value, (int, float)):
                     st.warning(f"Attribute '{attr}' should be a number, but got {type(value)}.")
                 # 他の型のチェックも必要に応じて追加
+
+def filter_json_data(json_data):
+    filtered_data = []
+    
+    for item in json_data:
+        reviewers = item.get("reviewers")
+        if reviewers is None:
+            reviewer_ids = []
+        elif isinstance(reviewers, list):
+            reviewer_ids = [reviewer.get("oxygenId") for reviewer in reviewers if isinstance(reviewer, dict) and "oxygenId" in reviewer]
+        elif isinstance(reviewers, dict):
+            reviewer_ids = [reviewers.get("oxygenId")] if "oxygenId" in reviewers else []
+        else:
+            reviewer_ids = []
+
+        location = item.get("location")
+        location_description = location.get("description") if isinstance(location, dict) else None
+
+        filtered_item = {
+            "status": item.get("status"),
+            "id": item.get("id"),
+            "title": item.get("title"),
+            "reviewerId": reviewer_ids[0] if reviewer_ids else None,
+            "dueDate": item.get("dueDate"),
+            "lbsIds": item.get("lbsIds"),
+            "location": location_description,
+            "reference": item.get("reference")
+        }
+        filtered_data.append(filtered_item)
+    
+    return filtered_data
+
+
+def transform_to_bim360_format(filtered_data):
+    if not filtered_data:
+        return None
+    
+    # 最初の項目のみを変換
+    item = filtered_data[0]
+    
+    bim360_item = {
+        "id": item.get("id", ""),
+        "status": item.get("status", "open"),
+        "title": item.get("title", ""),
+        "question": "",
+        "suggestedAnswer": "",
+        "assignedTo": item.get("reviewerId", ""),
+        "linkedDocument": "",
+        "linkedDocumentVersion": None,
+        "location": {
+            "description": item.get("location", "")
+        },
+        "dueDate": item.get("dueDate"),
+        "costImpact": "",
+        "scheduleImpact": "",
+        "priority": "",
+        "discipline": [],
+        "category": [],
+        "reference": item.get("reference", ""),
+        "sheetMetadata": {},
+        "coReviewers": [],
+        "distributionList": [],
+        "pushpinAttributes": {
+            "externalId": "",
+            "location": {},
+            "objectId": "",
+            "type": "TwoDRasterPushpin",
+            "viewerState": {},
+            "attributesVersion": 1
+        }
+    }
+    
+    if "lbsIds" in item:
+        bim360_item["lbsIds"] = item["lbsIds"]
+    
+    return bim360_item
