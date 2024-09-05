@@ -146,30 +146,39 @@ def transform_data(input_data):
     return dict(result)
 
 # issue_idとissue_titleをセットにした辞書を返す関数
-def get_issue_types(access_token, project_id):
+import requests
+
+def get_issue_types(access_token, project_id, include_subtypes=False):
     url = f"https://developer.api.autodesk.com/construction/issues/v1/projects/{project_id}/issue-types"
     headers = {
         'Authorization': f'Bearer {access_token}'
     }
-    response = requests.get(url, headers=headers)
+    params = {}
+    
+    if include_subtypes:
+        params['include'] = 'subtypes'
+    
+    response = requests.get(url, headers=headers, params=params)
     if response.status_code == 200:
-        dir_issue_types = {}
-        for i in response.json()["results"]:
-          dir_issue_types[i['title']] = i['id']
-        return dir_issue_types
+        return response.json()
     else:
-        raise Exception(f"issues取得エラー: {response.text}")
+        raise Exception(f"issue types取得エラー: {response.text}")
 
-def get_issues(access_token, project_id, issue_type_id=None):
-    # url = f"https://developer.api.autodesk.com/project/v1/hubs/{hub_id}/projects"
+def get_issues(access_token, project_id, issue_type_id=None, limit=100, offset=0):
+    base_url = f"https://developer.api.autodesk.com/construction/issues/v1/projects/{project_id}/issues"
+    params = {
+        "limit": limit,
+        "offset": offset
+    }
+    
     if issue_type_id is not None:
-      url = f"https://developer.api.autodesk.com/construction/issues/v1/projects/{project_id}/issues?filter[issueTypeId]={issue_type_id}"
-    else:
-      url = f"https://developer.api.autodesk.com/construction/issues/v1/projects/{project_id}/issues"
+        params["filter[issueTypeId]"] = issue_type_id
+
     headers = {
         'Authorization': f'Bearer {access_token}'
     }
-    response = requests.get(url, headers=headers)
+
+    response = requests.get(base_url, headers=headers, params=params)
     if response.status_code == 200:
         return response.json()
     else:
@@ -204,9 +213,7 @@ def patch_issues(access_token, project_id, issue_id, data):
         'Authorization': f'Bearer {access_token}',
         'Content-Type': 'application/json'
         }
-    # data = list(data)
     response = requests.patch(url, headers=headers, json=data)
-    # response = requests.post(url, headers=headers, json=data)
     if response.status_code == 200:
         return response.json()
     else:

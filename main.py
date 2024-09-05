@@ -29,6 +29,8 @@ def initialize_session_state():
         st.session_state.update_mode = None
     if 'issue_types' not in st.session_state:
         st.session_state.issue_types = None
+    if 'issue_subtypes' not in st.session_state:
+        st.session_state.issue_subtypes = None
     if 'account_id' not in st.session_state:
         st.session_state.account_id = None
 
@@ -87,7 +89,11 @@ def main():
                 st.session_state.top_folders = get_top_folders(st.session_state.token, hub_id, project_id)
 
         st.sidebar.markdown("**Folder Structure**")
-        folder_id = st.session_state.top_folders[0]["id"]
+        try:
+            folder_id = st.session_state.top_folders[0]["id"]
+        except IndexError:
+            st.sidebar.warning("フォルダが見つかりませんでした。")
+            return
         folder_path = []
         i = 1
 
@@ -200,70 +206,111 @@ def main():
                     st.markdown('**:red[Upload File(.xlsx/.xls/.csv)]**')
         
         elif selected == "Issue Config":
+            # タブ選択
             st.session_state.update_mode = st.radio(
                 "Mode:  ", 
                 ["🦾 Manual Update", "📈 ***Excel Batch Update***"], 
                 captions = ["Directly update issues", "Batch update issues via Excel file"],
                 horizontal=True)
             
-            # project_id_issue = project_id.split(".")[1]
-            issue_types = get_issue_types(st.session_state.token, st.session_state.current_project_id_issue)
-            st.session_state.issue_types = st.selectbox("Select Issue Type", issue_types, index=len(issue_types)-1)  #デフォルトでInformation Control Sheetを取得
-            issue_type_id = issue_types[st.session_state.issue_types]
-            st.write("-"*50)
+            # SubTypeも含めて取得
+            issue_types = get_issue_types(st.session_state.token, st.session_state.current_project_id_issue, True)
 
-            issues = get_issues(st.session_state.token, st.session_state.current_project_id_issue, issue_type_id=issue_type_id)["results"]
+            # IssueType, SubTypeを辞書に変換
+            ## IssueType
+            dir_issue_types = {}
+            for i in issue_types["results"]:
+                dir_issue_types[i['title']] = i['id']
+            st.session_state.issue_types = st.selectbox("Select Issue Type", dir_issue_types, index=len(issue_types)-1)  #デフォルトでInformation Control Sheetを取得
 
+            ## SubType
+            dir_issue_subtypes = {}
+            for i in issue_types["results"]:
+                if i['title'] == st.session_state.issue_types:
+                    for j in i['subtypes']:
+                        dir_issue_subtypes[j['title']] = j['id']
+            st.session_state.issue_subtypes = st.selectbox("Select Issue SubType", dir_issue_subtypes, index=len(dir_issue_subtypes)-1)
+            
+            # IssueType, SubTypeをIDに変換
+            issue_type_id = dir_issue_types[st.session_state.issue_types]
+            issue_subtype_id = dir_issue_subtypes[st.session_state.issue_subtypes]
+            # st.write("-"*50)
+
+            # カスタム属性の定義を取得
             issue_attribute_definitions = get_issue_attribute_definitions(st.session_state.token, st.session_state.current_project_id_issue)
+            # st.write(issue_attribute_definitions)    # 確認用に一旦表示
 
-            # "🦾 Manual Update"
             if st.session_state.update_mode == "🦾 Manual Update":
-                n_patch_issue = len(issues)  # ここでissue数を指定
-                issues = issues[:n_patch_issue]  # issuesリストから指定数だけ取得
+                # すべてのIssueを取得
+                try:
+                    all_issues = []
+                    offset = 0
+                    limit = 100
+                    while True:
+                        issues = get_issues(st.session_state.token, st.session_state.current_project_id_issue, issue_type_id=issue_type_id, offset=offset)["results"]
+                        if not issues:
+                            print("No more issues")
+                            break
+                        all_issues.extend(issues)
+                        offset += limit
+                    # print(f"total issues:  {len(all_issues)}")
+                    # st.subheader("all_issues[0]")
+                    # st.write(all_issues[0])
 
-                patch_dirs = {}  # 辞書型オブジェクトとして初期化
+                    patch_dirs = {}
+                    for issue in all_issues:
+                        issue_id = issue.get("id")
+                        if not issue_id:
+                            st.warning(f"IDが見つかりません: {issue}")
+                            continue
 
-                for issue in issues:
-                    issue_id = issue.get("id")
-                    if not issue_id:
-                        st.warning(f"IDが見つかりません: {issue}")
-                        continue
+                        permittedAttributes = issue.get("permittedAttributes", [])
 
-                    permittedAttributes = issue.get("permittedAttributes", [])
+                        patchable_attributes = [
+                            "title", "description", "snapshotUrn", "issueSubtypeId", "status", 
+                            "assignedTo", "assignedToType", "dueDate", "startDate", "locationId", "locationDetails", 
+                            "rootCauseId", "published", "permittedActions", "watchers", "customAttributes", "gpsCoordinates", "snapshotHasMarkups"
+                        ]
 
-                    patchable_attributes = [
-                        "displayId", "title", "description", "snapshotUrn", "issueSubtypeId", "status", 
-                        "assignedTo", "assignedToType", "dueDate", "startDate", "locationId", "locationDetails", 
-                        "rootCauseId", "published", "permittedActions", "watchers", "customAttributes", "gpsCoordinates", "snapshotHasMarkups"
-                    ]
+                        patch_dir = {}
+                        patch_dir["displayId"] = issue["displayId"]
+                        for attr in permittedAttributes:
+                            if attr in issue and attr in patchable_attributes:
+                                patch_dir[attr] = issue[attr]
 
-                    patch_dir = {}
-                    for attr in permittedAttributes:
-                        if attr in issue and attr in patchable_attributes:
-                            patch_dir[attr] = issue[attr]
+                        patch_dirs[issue_id] = patch_dir
 
-                    patch_dirs[issue_id] = patch_dir
+                    flattened_issues = flatten_issue_data(patch_dirs, issue_attribute_definitions)
+                    # st.subheader("flattened_issues[0]")
+                    # st.write(flattened_issues[0])
 
-                # 辞書型オブジェクトをフラット化
-                flattened_issues = flatten_issue_data(patch_dirs, issue_attribute_definitions)
+                    edited_df = st.data_editor(
+                        data=flattened_issues,
+                        disabled=("id",),
+                        column_config={
+                            "issueSubtypeId":None,
+                            "status": st.column_config.SelectboxColumn(
+                                "Status",
+                                options=["draft", "open", "pending", "in_progress", "completed", "in_review", "not_approved", "in_dispute", "closed"]
+                            )
+                        }
+                    )
+                    
+                    unflattend_issues = unflatten_issue_data(edited_df, issue_attribute_definitions)
 
-                # Streamlitで表示
-                edited_df = st.data_editor(data=flattened_issues, disabled=("id", "issueSubtypeId"))
+                    if st.button("Update Issues"):
+                        try:
+                            with st.spinner('Updating issues...'):
+                                for issue_id, patch_data in unflattend_issues.items():
+                                    patch_issues(access_token=st.session_state.token, project_id=st.session_state.current_project_id_issue, issue_id=issue_id, data=patch_data)
+                            st.success("Issuesを更新しました！")
+                        except Exception as e:
+                            st.error(f"Error updating issue {issue_id}: {str(e)}")
                 
-                unflattend_issues = unflatten_issue_data(edited_df, issue_attribute_definitions)
+                except Exception as e:
+                    st.error(f"Error getting issues: {str(e)}")
 
-                # パッチ処理
-                if st.button("Update Issues"):
-                    try:
-                        with st.spinner('Updating issues...'):
-                            for issue_id, patch_data in unflattend_issues.items():
-                                patch_issues(access_token=st.session_state.token, project_id=st.session_state.current_project_id_issue, issue_id=issue_id, data=patch_data)
-                        st.success("Issuesを更新しました！")
-                    except Exception as e:
-                        st.error(f"Error updating issue {issue_id}: {str(e)}")
-
-            # "📈 Custom Attributes"
-            if st.session_state.update_mode == "📈 ***Excel Batch Update***":
+            elif st.session_state.update_mode == "📈 ***Excel Batch Update***":
                 uploaded_file = st.file_uploader("Batch Update", type=["csv", "xlsx", "xls"])
                 if uploaded_file is not None:
                     try:
