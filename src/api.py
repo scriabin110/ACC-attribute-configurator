@@ -4,6 +4,8 @@ import urllib.parse
 import pandas as pd
 import json
 from collections import defaultdict
+from requests import RequestException
+import time
 
 def get_projects(access_token, hub_id):
     url = f"https://developer.api.autodesk.com/project/v1/hubs/{hub_id}/projects"
@@ -193,7 +195,7 @@ def get_issue_attribute_mappings(access_token, project_id):
     if response.status_code == 200:
         return response.json()
     else:
-        raise Exception(f"attribute_mappings取得エラー: {response.text}")
+        raise Exception(f"attronite_mapping取得エラー: {response.text}")
 
 def get_issue_attribute_definitions(access_token, project_id):
     url = f"https://developer.api.autodesk.com/construction/issues/v1/projects/{project_id}/issue-attribute-definitions"
@@ -204,7 +206,7 @@ def get_issue_attribute_definitions(access_token, project_id):
     if response.status_code == 200:
         return response.json()
     else:
-        raise Exception(f"attribute_mappings取得エラー: {response.text}")
+        raise Exception(f"issue_attribute_definition取得エラー: {response.text}")
 
 def patch_issues(access_token, project_id, issue_id, data):
     project_id = project_id
@@ -217,7 +219,19 @@ def patch_issues(access_token, project_id, issue_id, data):
     if response.status_code == 200:
         return response.json()
     else:
-        raise Exception(f"attribute_mappings取得エラー: {response.text}")
+        raise Exception(f"patch_issuesエラー: {response.text}")
+
+def patch_issues_with_retry(access_token, project_id, issue_id, data, max_retries=3, delay=5):
+    for attempt in range(max_retries):
+        try:
+            response = patch_issues(access_token, project_id, issue_id, data)
+            return response
+        except RequestException as e:
+            if attempt < max_retries - 1:
+                st.warning(f"Attempt {attempt + 1} failed. Retrying in {delay} seconds...")
+                time.sleep(delay)
+            else:
+                raise e
 
 def get_project_users(access_token, project_id):
     url = f"https://developer.api.autodesk.com/construction/admin/v1/projects/{project_id}/users"

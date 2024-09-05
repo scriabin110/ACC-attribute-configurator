@@ -7,6 +7,7 @@ import const
 from streamlit_option_menu import option_menu
 import pandas as pd
 from config import ROLE_DICT
+import numpy as np
 
 def initialize_session_state():
     if 'token' not in st.session_state:
@@ -321,29 +322,53 @@ def main():
                             df = pd.read_excel(uploaded_file, engine='openpyxl')
                         else:
                             st.error("サポートされていないファイル形式です。")
-                            return
+                            st.stop()
 
                         # NaN値を None に置換
-                        df = df.where(pd.notnull(df), None)
+                        df = df.replace({np.nan: None})
 
                         st.dataframe(df)
                         
-                        # DataFrameを辞書のリストに変換し、NaN値をNoneに置換
+                        # DataFrameを辞書のリストに変換し、データを前処理
                         records = df.to_dict('records')
+                        records = [preprocess_data(record) for record in records]
+
+                        # データの検証
                         for record in records:
-                            for key, value in record.items():
-                                if pd.isna(value):
-                                    record[key] = None
+                            validate_data(record, issue_attribute_definitions)
 
                         unflattened_issues = unflatten_issue_data(records, issue_attribute_definitions)
 
                         if st.button("Issuesを更新"):
                             with st.spinner('Updating issues...'):
+                                success_count = 0
+                                error_count = 0
                                 for issue_id, patch_data in unflattened_issues.items():
-                                    # None値を持つキーを削除
-                                    patch_data = {k: v for k, v in patch_data.items() if v is not None}
-                                    patch_issues(access_token=st.session_state.token, project_id=st.session_state.current_project_id_issue, issue_id=issue_id, data=patch_data)
-                            st.success("Issuesを更新しました！")
+                                    try:
+                                        # None値を持つキーを削除
+                                        patch_data = {k: v for k, v in patch_data.items() if v is not None}
+                                        patch_issues_with_retry(
+                                            access_token=st.session_state.token,
+                                            project_id=st.session_state.current_project_id_issue,
+                                            issue_id=issue_id,
+                                            data=patch_data
+                                        )
+                                        success_count += 1
+                                        # 進捗状況の表示
+                                        st.text(f"Progress: {success_count + error_count}/{len(unflattened_issues)}")
+                                    except RequestException as e:
+                                        error_count += 1
+                                        if "502 Bad Gateway" in str(e):
+                                            st.error(f"サーバーが一時的に利用できません。Issue {issue_id} の更新に失敗しました。後でもう一度お試しください。")
+                                        else:
+                                            st.error(f"Error updating issue {issue_id}: {str(e)}")
+                                        if hasattr(e, 'response'):
+                                            st.error(f"Response content: {e.response.content}")
+                                    
+                                    # 各更新の後に短い遅延を入れる
+                                    time.sleep(0.5)
+
+                            st.success(f"更新完了: {success_count}件成功, {error_count}件失敗")
                     except Exception as e:
                         st.error(f"ファイルの読み込み中にエラーが発生しました: {str(e)}")
                 else:
