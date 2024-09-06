@@ -8,6 +8,7 @@ from streamlit_option_menu import option_menu
 import pandas as pd
 from config import ROLE_DICT
 import numpy as np
+from tabs import document_management, issue_config, rfis_config
 
 def initialize_session_state():
     if 'token' not in st.session_state:
@@ -130,249 +131,14 @@ def main():
     # ここまで：①プロジェクト選択、②フォルダ選択
 
         if selected == "Document Management":
-            st.session_state.update_mode = st.radio(
-                "Mode:  ", 
-                ["🦾 Manual Update", "📈 ***Excel Batch Update***"], 
-                captions = ["Directly update issues", "Batch update issues via Excel file"],
-                horizontal=True)
-            
-            # "🦾 Manual Update"
-            if st.session_state.update_mode == "🦾 Manual Update": 
-                try:
-                    if st.session_state.urns:
-                        json_data = get_custom_Attribute(st.session_state.token, project_id, st.session_state.urns)['results']
-                        custom_attributes = []
-                        for item in json_data:
-                            name = item['name']
-                            urn = item['urn']
-                            for attr in item.get('customAttributes', []):
-                                custom_attributes.append({
-                                    'file name': name,
-                                    'urn': urn,
-                                    'id': attr['id'],
-                                    'type': attr['type'],
-                                    'name': attr['name'],
-                                    'value': attr['value']
-                                })
-
-                        df = pd.DataFrame(custom_attributes)
-                        st.markdown("**Custom Attributes**")
-                        edited_df = st.data_editor(data=df, disabled=("file name", "urn", 'id', 'type', 'name'))
-
-                        dict = transform_data(edited_df.to_dict('index'))
-
-                        if st.button("カスタム属性を更新"):
-                            for urn, data_list in dict.items():
-                                update_custom_Attribute(
-                                    token=st.session_state.token,
-                                    project_id=project_id,
-                                    urn=urn,
-                                    data=data_list
-                                )
-                            st.success("カスタム属性を更新しました！")
-                    else:
-                        st.warning("フォルダ内にファイルが存在しません。")
-                except Exception as e:
-                    st.error(f"エラーが発生しました: {str(e)}")
-            
-            #"📈 Custom Attributes"
-            if st.session_state.update_mode == "📈 ***Excel Batch Update***": 
-                uploaded_file = st.file_uploader("Batch Update", type=["csv", "xlsx", "xls"])
-                if uploaded_file is not None:
-                    try:
-                        file_extension = uploaded_file.name.split('.')[-1].lower()
-                        if file_extension == "csv":
-                            df = pd.read_csv(uploaded_file)
-                        elif file_extension in ["xlsx", "xls"]:
-                            df = pd.read_excel(uploaded_file, engine='openpyxl')
-                        else:
-                            st.error("サポートされていないファイル形式です。")
-                            return
-
-                        st.dataframe(df)
-                        dict = transform_data(df.to_dict('index'))
-
-                        if st.button("カスタム属性を更新"):
-                            for urn, data_list in dict.items():
-                                update_custom_Attribute(
-                                    token=st.session_state.token,
-                                    project_id=project_id,
-                                    urn=urn,
-                                    data=data_list
-                                )
-                            st.success("カスタム属性を更新しました！")
-                    except Exception as e:
-                        st.error(f"ファイルの読み込み中にエラーが発生しました: {str(e)}")
-                else:
-                    st.markdown('**:red[Upload File(.xlsx/.xls/.csv)]**')
+            document_management.run(
+                token=st.session_state.token,
+                project_id=st.session_state.current_project_id,
+                urns=st.session_state.urns
+            )
         
         elif selected == "Issue Config":
-            # タブ選択
-            st.session_state.update_mode = st.radio(
-                "Mode:  ", 
-                ["🦾 Manual Update", "📈 ***Excel Batch Update***"], 
-                captions = ["Directly update issues", "Batch update issues via Excel file"],
-                horizontal=True)
-            
-            # SubTypeも含めて取得
-            issue_types = get_issue_types(st.session_state.token, st.session_state.current_project_id_issue, True)
-
-            # IssueType, SubTypeを辞書に変換
-            ## IssueType
-            dir_issue_types = {}
-            for i in issue_types["results"]:
-                dir_issue_types[i['title']] = i['id']
-            st.session_state.issue_types = st.selectbox("Select Issue Type", dir_issue_types, index=len(issue_types)-1)  #デフォルトでInformation Control Sheetを取得
-
-            ## SubType
-            dir_issue_subtypes = {}
-            for i in issue_types["results"]:
-                if i['title'] == st.session_state.issue_types:
-                    for j in i['subtypes']:
-                        dir_issue_subtypes[j['title']] = j['id']
-            st.session_state.issue_subtypes = st.selectbox("Select Issue SubType", dir_issue_subtypes, index=len(dir_issue_subtypes)-1)
-            
-            # IssueType, SubTypeをIDに変換
-            issue_type_id = dir_issue_types[st.session_state.issue_types]
-            issue_subtype_id = dir_issue_subtypes[st.session_state.issue_subtypes]
-            # st.write("-"*50)
-
-            # カスタム属性の定義を取得
-            issue_attribute_definitions = get_issue_attribute_definitions(st.session_state.token, st.session_state.current_project_id_issue)
-            # st.write(issue_attribute_definitions)    # 確認用に一旦表示
-
-            if st.session_state.update_mode == "🦾 Manual Update":
-                # すべてのIssueを取得
-                try:
-                    all_issues = []
-                    offset = 0
-                    limit = 100
-                    while True:
-                        issues = get_issues(st.session_state.token, st.session_state.current_project_id_issue, issue_type_id=issue_type_id, offset=offset)["results"]
-                        if not issues:
-                            print("No more issues")
-                            break
-                        all_issues.extend(issues)
-                        offset += limit
-                    # print(f"total issues:  {len(all_issues)}")
-                    # st.subheader("all_issues[0]")
-                    # st.write(all_issues[0])
-
-                    patch_dirs = {}
-                    for issue in all_issues:
-                        issue_id = issue.get("id")
-                        if not issue_id:
-                            st.warning(f"IDが見つかりません: {issue}")
-                            continue
-
-                        permittedAttributes = issue.get("permittedAttributes", [])
-
-                        patchable_attributes = [
-                            "title", "description", "snapshotUrn", "issueSubtypeId", "status", 
-                            "assignedTo", "assignedToType", "dueDate", "startDate", "locationId", "locationDetails", 
-                            "rootCauseId", "published", "permittedActions", "watchers", "customAttributes", "gpsCoordinates", "snapshotHasMarkups"
-                        ]
-
-                        patch_dir = {}
-                        patch_dir["displayId"] = issue["displayId"]
-                        for attr in permittedAttributes:
-                            if attr in issue and attr in patchable_attributes:
-                                patch_dir[attr] = issue[attr]
-
-                        patch_dirs[issue_id] = patch_dir
-
-                    flattened_issues = flatten_issue_data(patch_dirs, issue_attribute_definitions)
-                    # st.subheader("flattened_issues[0]")
-                    # st.write(flattened_issues[0])
-
-                    edited_df = st.data_editor(
-                        data=flattened_issues,
-                        disabled=("id",),
-                        column_config={
-                            "issueSubtypeId":None,
-                            "status": st.column_config.SelectboxColumn(
-                                "Status",
-                                options=["draft", "open", "pending", "in_progress", "completed", "in_review", "not_approved", "in_dispute", "closed"]
-                            )
-                        }
-                    )
-                    
-                    unflattend_issues = unflatten_issue_data(edited_df, issue_attribute_definitions)
-
-                    if st.button("Update Issues"):
-                        try:
-                            with st.spinner('Updating issues...'):
-                                for issue_id, patch_data in unflattend_issues.items():
-                                    patch_issues(access_token=st.session_state.token, project_id=st.session_state.current_project_id_issue, issue_id=issue_id, data=patch_data)
-                            st.success("Issuesを更新しました！")
-                        except Exception as e:
-                            st.error(f"Error updating issue {issue_id}: {str(e)}")
-                
-                except Exception as e:
-                    st.error(f"Error getting issues: {str(e)}")
-
-            elif st.session_state.update_mode == "📈 ***Excel Batch Update***":
-                uploaded_file = st.file_uploader("Batch Update", type=["csv", "xlsx", "xls"])
-                if uploaded_file is not None:
-                    try:
-                        file_extension = uploaded_file.name.split('.')[-1].lower()
-                        if file_extension == "csv":
-                            df = pd.read_csv(uploaded_file)
-                        elif file_extension in ["xlsx", "xls"]:
-                            df = pd.read_excel(uploaded_file, engine='openpyxl')
-                        else:
-                            st.error("サポートされていないファイル形式です。")
-                            st.stop()
-
-                        # NaN値を None に置換
-                        df = df.replace({np.nan: None})
-
-                        st.dataframe(df)
-                        
-                        # DataFrameを辞書のリストに変換し、データを前処理
-                        records = df.to_dict('records')
-                        records = [preprocess_data(record) for record in records]
-
-                        # データの検証
-                        for record in records:
-                            validate_data(record, issue_attribute_definitions)
-
-                        unflattened_issues = unflatten_issue_data(records, issue_attribute_definitions)
-
-                        if st.button("Issuesを更新"):
-                            with st.spinner('Updating issues...'):
-                                success_count = 0
-                                error_count = 0
-                                for issue_id, patch_data in unflattened_issues.items():
-                                    try:
-                                        # None値を持つキーを削除
-                                        patch_data = {k: v for k, v in patch_data.items() if v is not None}
-                                        patch_issues_with_retry(
-                                            access_token=st.session_state.token,
-                                            project_id=st.session_state.current_project_id_issue,
-                                            issue_id=issue_id,
-                                            data=patch_data
-                                        )
-                                        success_count += 1
-                                        # 進捗状況の表示
-                                        st.text(f"Progress: {success_count + error_count}/{len(unflattened_issues)}")
-                                    except RequestException as e:
-                                        error_count += 1
-                                        if "502 Bad Gateway" in str(e):
-                                            st.error(f"サーバーが一時的に利用できません。Issue {issue_id} の更新に失敗しました。後でもう一度お試しください。")
-                                        else:
-                                            st.error(f"Error updating issue {issue_id}: {str(e)}")
-                                        if hasattr(e, 'response'):
-                                            st.error(f"Response content: {e.response.content}")
-                                    
-                                    # 各更新の後に短い遅延を入れる
-                                    time.sleep(0.5)
-
-                            st.success(f"更新完了: {success_count}件成功, {error_count}件失敗")
-                    except Exception as e:
-                        st.error(f"ファイルの読み込み中にエラーが発生しました: {str(e)}")
-                else:
-                    st.markdown('**:red[Upload File(.xlsx/.xls/.csv)]**')
+            issue_config.run()
 
         elif selected == "RFIs Config":
             # 残したいattribute・パラメータの類
@@ -387,39 +153,43 @@ def main():
                 # - Reference：→ 一旦削除
                 # - External ID(reference)：string
 
+            rfis_config.run()
             
-            rfis = get_rfis(st.session_state.token, st.session_state.current_project_id_issue)
-            rfi_id = rfis[-2]["id"]
-            rfi_per_id = get_rfi_per_id(st.session_state.token, st.session_state.current_project_id_issue, rfi_id)
-            locations_att = get_locations_att(st.session_state.token, st.session_state.current_project_id_issue, rfi_id)
-            custom_attributes = rfi_per_id["customAttributes"]
-            location_node = get_locations_node(st.session_state.token, st.session_state.current_project_id_issue)
+            # rfis = get_rfis(st.session_state.token, st.session_state.current_project_id_issue)
+            # rfi_id = rfis[-2]["id"]
+            # rfi_per_id = get_rfi_per_id(st.session_state.token, st.session_state.current_project_id_issue, rfi_id)
+            # locations_att = get_locations_att(st.session_state.token, st.session_state.current_project_id_issue, rfi_id)
+            # custom_attributes = rfi_per_id["customAttributes"]
+            # location_node = get_locations_node(st.session_state.token, st.session_state.current_project_id_issue)
 
-            filtered_rfis = filter_json_data(rfis)
-            rfis_for_post = transform_to_bim360_format(filtered_rfis)
-            if st.button("Post RFIs"):
-                post_rfis(st.session_state.token, st.session_state.current_project_id_issue, rfis_for_post[0])
-                st.success("RFIsを更新しました！")
+            # filtered_rfis = filter_json_data(rfis)
+            # rfis_for_post = transform_to_bim360_format(filtered_rfis)
+            # if st.button("Post RFIs"):
+            #     post_rfis(st.session_state.token, st.session_state.current_project_id_issue, rfis_for_post[0])
+            #     st.success("RFIsを更新しました！")
 
-            st.write(filtered_rfis)
+            # st.write(filtered_rfis)
 
-            st.subheader("RFIs")
-            st.write(rfis)
+            # st.subheader("RFIs")
+            # st.write(rfis)
 
-            st.subheader("RFIs_per_id")
+            # st.subheader("RFIs_per_id")
 
-            st.write(rfi_per_id)
+            # st.write(rfi_per_id)
 
-            st.subheader("attachment")
-            st.write(locations_att)
+            # st.subheader("attachment")
+            # st.write(locations_att)
 
-            st.subheader("Custom Attributes")
-            st.write(custom_attributes)
+            # st.subheader("Custom Attributes")
+            # st.write(custom_attributes)
 
             
-            st.subheader("Location Node")
-            st.write(location_node)
+            # st.subheader("Location Node")
+            # st.write(location_node)
 
+
+
+            # ======================== #
 
             # 1. RFIs table view
                 # status / customIdentifier / title / reviewers / coReivewers / dueDate / rfiTypeId / lbsIds / location / costImpact / scheduleImpact / - / priority / discipline / reference / createdBy / commentsCount / createdAt
